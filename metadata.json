@@ -1,0 +1,7 @@
+{
+  "name": "Shree Ganesh Flex Billing System",
+  "description": "A comprehensive billing and management software for advertising businesses, featuring service selection, square footage calculation, automated WhatsApp reminders, and CSV data export.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
