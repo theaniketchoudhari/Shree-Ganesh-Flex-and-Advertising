@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
-    base: '/Shree-Ganesh-Flex-and-Advertising/',
+    base: '/', // ✅ REQUIRED for Vercel
     define: {
       // This is the CRITICAL part for Vercel. 
       // It maps your Vercel Environment Variable to the code.
