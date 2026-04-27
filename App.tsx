@@ -157,7 +157,8 @@ const App: React.FC = () => {
           userId: user.uid
         };
         await setDoc(doc(db, 'bills', existing.id), updatedBill);
-        alert(`Merged items into ${newBill.customerName}'s account.`);
+        console.log("Bill Merged Successfully");
+        alert(`Merged items into ${newBill.customerName}'s existing account.`);
       } else {
         await setDoc(doc(db, 'bills', newBill.id), { 
           ...newBill, 
@@ -166,10 +167,12 @@ const App: React.FC = () => {
           updatedAt: serverTimestamp()
         });
         console.log("Bill Saved Successfully:", newBill.id);
+        alert("Invoice Generated and Saved Successfully!");
       }
     } catch (e) {
       console.error("Error saving bill:", e);
       handleFirestoreError(e, OperationType.WRITE, 'bills');
+      alert("Error saving invoice. Please check the console for details.");
     }
   };
 
@@ -190,8 +193,10 @@ const App: React.FC = () => {
   };
 
   const deleteBill = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
     try {
       await deleteDoc(doc(db, 'bills', id));
+      alert("Invoice deleted.");
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, 'bills');
     }
@@ -201,6 +206,7 @@ const App: React.FC = () => {
     if (!user) return;
     try {
       await setDoc(doc(db, 'services', s.id), { ...s, userId: user.uid });
+      alert("Service saved.");
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, 'services');
     }
@@ -218,6 +224,7 @@ const App: React.FC = () => {
     if (!user) return;
     try {
       await setDoc(doc(db, 'expenses', e.id), { ...e, userId: user.uid });
+      alert("Expense recorded.");
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, 'expenses');
     }
@@ -235,6 +242,7 @@ const App: React.FC = () => {
     if (!user) return;
     try {
       await setDoc(doc(db, 'personalTransactions', t.id), { ...t, userId: user.uid });
+      alert("Personal transaction saved.");
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, 'personalTransactions');
     }
