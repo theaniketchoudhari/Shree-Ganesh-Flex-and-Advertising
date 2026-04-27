@@ -73,7 +73,8 @@ const App: React.FC = () => {
     // Bills
     const billsQuery = query(collection(db, 'bills'), where('userId', '==', user.uid));
     const unsubBills = onSnapshot(billsQuery, (snap) => {
-      const data = snap.docs.map(d => d.data() as Bill).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      console.log("Bills sync:", snap.size);
+      const data = snap.docs.map(d => d.data() as Bill).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       setBills(data);
       setLastSync(new Date().toLocaleTimeString());
       setIsSyncing(false);
@@ -89,6 +90,7 @@ const App: React.FC = () => {
     // Expenses
     const expensesQuery = query(collection(db, 'expenses'), where('userId', '==', user.uid));
     const unsubExpenses = onSnapshot(expensesQuery, (snap) => {
+      console.log("Expenses sync:", snap.size);
       const data = snap.docs.map(d => d.data() as Expense).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setExpenses(data);
     }, (e) => handleFirestoreError(e, OperationType.LIST, 'expenses'));
@@ -96,6 +98,7 @@ const App: React.FC = () => {
     // Personal Transactions
     const personalQuery = query(collection(db, 'personalTransactions'), where('userId', '==', user.uid));
     const unsubPersonal = onSnapshot(personalQuery, (snap) => {
+      console.log("Personal transactions sync:", snap.size);
       const data = snap.docs.map(d => d.data() as PersonalTransaction).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setPersonalTransactions(data);
     }, (e) => handleFirestoreError(e, OperationType.LIST, 'personalTransactions'));
@@ -121,7 +124,7 @@ const App: React.FC = () => {
     const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 3600 * 24));
     daysLeft = Math.max(0, PREMIUM_DAYS - diff);
     progress = (daysLeft / PREMIUM_DAYS) * 100;
-  } else {
+  } else if (subscription.installDate) {
     const start = new Date(subscription.installDate);
     const diff = Math.floor((now.getTime() - start.getTime()) / (1000 * 3600 * 24));
     daysLeft = Math.max(0, TRIAL_DAYS - diff);
@@ -132,6 +135,7 @@ const App: React.FC = () => {
   const addBill = async (newBill: Bill) => {
     if (!user) return;
     try {
+      console.log("Saving Bill:", newBill.id, "for user:", user.uid);
       const existingIdx = bills.findIndex(b => b.status === 'Pending' && b.customerPhone === newBill.customerPhone && b.customerPhone !== '');
       if (existingIdx !== -1) {
         const existing = bills[existingIdx];
@@ -139,8 +143,9 @@ const App: React.FC = () => {
           ...existing,
           items: [...existing.items, ...newBill.items],
           totalAmount: existing.totalAmount + newBill.totalAmount,
-          notes: existing.notes + (newBill.notes ? ` | ${newBill.notes}` : ''),
-          updatedAt: serverTimestamp()
+          notes: (existing.notes || '') + (newBill.notes ? ` | ${newBill.notes}` : ''),
+          updatedAt: serverTimestamp(),
+          userId: user.uid // Ensure userId is preserved
         };
         await setDoc(doc(db, 'bills', existing.id), updatedBill);
         alert(`Merged items into ${newBill.customerName}'s account.`);
@@ -151,8 +156,10 @@ const App: React.FC = () => {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
+        console.log("Bill Saved Successfully:", newBill.id);
       }
     } catch (e) {
+      console.error("Error saving bill:", e);
       handleFirestoreError(e, OperationType.WRITE, 'bills');
     }
   };

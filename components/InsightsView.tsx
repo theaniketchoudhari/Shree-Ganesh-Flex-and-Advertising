@@ -32,7 +32,7 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
     onAddExpense({
       id: Math.random().toString(36).substr(2, 9),
       amount: expAmount,
-      date: new Date().toLocaleDateString(),
+      date: new Date().toISOString().split('T')[0],
       description: expDesc
     });
     setExpAmount(0);
@@ -61,7 +61,7 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
   const last30Days = Array.from({ length: 30 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    return d.toLocaleDateString();
+    return d.toISOString().split('T')[0];
   }).reverse();
 
   const chartData = last30Days.map(date => {
@@ -78,8 +78,11 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
       .filter(e => e.date === date)
       .reduce((sum, e) => sum + e.amount, 0);
     
+    // Format date for display (MM-DD)
+    const displayDate = date.split('-').slice(1).join('-');
+    
     return { 
-      date: date.split('/')[0] + '/' + date.split('/')[1], 
+      date: displayDate, 
       Revenue: dailyRevenue, 
       Expenses: dailyExpenses,
       Profit: dailyRevenue - dailyExpenses

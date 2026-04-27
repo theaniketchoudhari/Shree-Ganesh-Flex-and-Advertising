@@ -60,12 +60,13 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
       id: `INV-${Date.now()}`,
       customerName,
       customerPhone,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString(),
+      date: new Date().toISOString().split('T')[0],
+      time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
       items: selectedItems,
       totalAmount,
       status: 'Pending',
-      notes
+      notes,
+      timestamp: Date.now()
     };
     onSave(newBill);
     setCustomerName('');

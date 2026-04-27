@@ -22,7 +22,7 @@ const PersonalView: React.FC<PersonalViewProps> = ({ transactions, onAdd, onDele
       amount,
       description: desc,
       category: cat,
-      date: new Date().toLocaleDateString()
+      date: new Date().toISOString().split('T')[0]
     });
     setAmount(0);
     setDesc('');

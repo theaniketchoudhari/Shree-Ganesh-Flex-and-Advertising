@@ -31,6 +31,7 @@ export interface Bill {
   totalAmount: number;
   status: 'Pending' | 'Paid';
   notes: string;
+  timestamp?: number;
 }
 
 export interface Expense {
