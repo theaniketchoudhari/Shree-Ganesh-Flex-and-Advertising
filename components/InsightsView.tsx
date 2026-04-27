@@ -58,6 +58,31 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
     
   const netProfit = totalRevenue - totalExpenses;
 
+  const exportExpensesCSV = () => {
+    const headers = ['ID', 'Date', 'Description', 'Amount'];
+    const rows = expenses.map(e => [
+      e.id,
+      e.date,
+      e.description,
+      e.amount
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `expenses_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const last30Days = Array.from({ length: 30 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - i);
@@ -158,12 +183,24 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
             <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl"><i className="fas fa-clock text-xl"></i></div>
             <div>
               <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Pending Dues</p>
-              <h4 className="text-xl font-black text-amber-600">₹{totalPending.toLocaleString('en-IN')}</h4>
+              <div className="flex items-baseline gap-2">
+                <h4 className="text-xl font-black text-amber-600">₹{totalPending.toLocaleString('en-IN')}</h4>
+              </div>
               <p className="text-[8px] text-amber-500 font-bold uppercase tracking-tighter">Market Outstanding</p>
             </div>
           </div>
         </div>
-        <div className={`p-6 rounded-3xl shadow-sm border transition-all ${netProfit >= 0 ? 'bg-orange-600 text-white border-orange-500' : 'bg-red-600 text-white border-red-500'}`}>
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:border-indigo-200 transition-all">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl"><i className="fas fa-file-invoice-dollar text-xl"></i></div>
+            <div>
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Total Sales</p>
+              <h4 className="text-xl font-black text-indigo-800">₹{(totalRevenue + totalPending).toLocaleString('en-IN')}</h4>
+              <p className="text-[8px] text-indigo-400 font-bold uppercase tracking-tighter">Paid + Pending</p>
+            </div>
+          </div>
+        </div>
+        <div className={`p-6 rounded-3xl shadow-sm border transition-all col-span-1 sm:col-span-2 lg:col-span-1 ${netProfit >= 0 ? 'bg-orange-600 text-white border-orange-500' : 'bg-red-600 text-white border-red-500'}`}>
           <div className="flex items-center gap-4">
             <div className="p-3 bg-white/20 rounded-2xl"><i className="fas fa-chart-line text-xl"></i></div>
             <div>
@@ -206,7 +243,16 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
 
       <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
         <div className="px-8 py-6 bg-gray-50/50 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="font-black text-gray-700 uppercase text-xs tracking-widest">Recent Expense Log</h3>
+          <div className="flex items-center gap-4">
+            <h3 className="font-black text-gray-700 uppercase text-xs tracking-widest">Recent Expense Log</h3>
+            <button 
+              onClick={exportExpensesCSV}
+              className="text-[10px] font-black uppercase text-slate-400 hover:text-slate-800 transition-colors flex items-center gap-1"
+            >
+              <i className="fas fa-file-csv"></i>
+              Export
+            </button>
+          </div>
           <span className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded font-bold">{expenses.length} Records</span>
         </div>
         <div className="max-h-96 overflow-y-auto thin-scrollbar">

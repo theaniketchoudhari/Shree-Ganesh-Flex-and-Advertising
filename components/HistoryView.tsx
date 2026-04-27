@@ -33,10 +33,48 @@ const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, on
     window.open(`https://wa.me/${phone.startsWith('91') ? phone : '91' + phone}?text=${encodedMsg}`, '_blank');
   };
 
+  const exportToCSV = () => {
+    const headers = ['Order ID', 'Date', 'Customer', 'Phone', 'Items', 'Total', 'Status', 'Notes'];
+    const rows = filteredBills.map(bill => [
+      bill.id,
+      bill.date,
+      bill.customerName,
+      bill.customerPhone || '-',
+      bill.items.map(i => `${i.serviceName}(x${i.quantity})`).join('; '),
+      bill.totalAmount,
+      bill.status,
+      bill.notes.replace(/,/g, ';')
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `sales_records_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-2xl font-black text-gray-800 tracking-tight">Sales Records</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-black text-gray-800 tracking-tight">Sales Records</h2>
+          <button 
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-700 transition-all shadow-lg shadow-slate-100"
+          >
+            <i className="fas fa-file-csv"></i>
+            Export CSV
+          </button>
+        </div>
         <div className="relative w-full md:w-96">
           <i className="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
           <input

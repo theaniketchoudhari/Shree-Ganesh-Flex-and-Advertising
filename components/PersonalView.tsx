@@ -31,6 +31,32 @@ const PersonalView: React.FC<PersonalViewProps> = ({ transactions, onAdd, onDele
 
   const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
 
+  const exportPersonalCSV = () => {
+    const headers = ['ID', 'Date', 'Category', 'Description', 'Amount'];
+    const rows = transactions.map(t => [
+      t.id,
+      t.date,
+      t.category,
+      t.description,
+      t.amount
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(field => `"${field}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `personal_transactions_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
@@ -38,13 +64,22 @@ const PersonalView: React.FC<PersonalViewProps> = ({ transactions, onAdd, onDele
           <h2 className="text-2xl font-black text-gray-800 tracking-tight">Personal Activity</h2>
           <p className="text-sm text-gray-400 font-bold">Private expense and transaction logging</p>
         </div>
-        <button 
-          onClick={() => setShowAdd(!showAdd)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center shadow-lg shadow-indigo-100 transition-all"
-        >
-          <i className={`fas ${showAdd ? 'fa-times' : 'fa-plus'} mr-2`}></i>
-          {showAdd ? 'Cancel' : 'Add Activity'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={exportPersonalCSV}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all border border-slate-200"
+          >
+            <i className="fas fa-file-csv"></i>
+            Export CSV
+          </button>
+          <button 
+            onClick={() => setShowAdd(!showAdd)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center shadow-lg shadow-indigo-100 transition-all"
+          >
+            <i className={`fas ${showAdd ? 'fa-times' : 'fa-plus'} mr-2`}></i>
+            {showAdd ? 'Cancel' : 'Add Activity'}
+          </button>
+        </div>
       </div>
 
       {showAdd && (
