@@ -133,10 +133,19 @@ const App: React.FC = () => {
   const isLocked = !subscription.isActivated && daysLeft <= 0;
 
   const addBill = async (newBill: Bill) => {
-    if (!user) return;
+    if (!user) {
+      alert("Please login first to save data.");
+      return;
+    }
     try {
       console.log("Saving Bill:", newBill.id, "for user:", user.uid);
-      const existingIdx = bills.findIndex(b => b.status === 'Pending' && b.customerPhone === newBill.customerPhone && b.customerPhone !== '');
+      const existingIdx = bills.findIndex(b => 
+        b.status === 'Pending' && 
+        b.customerPhone === newBill.customerPhone && 
+        b.customerPhone !== '' &&
+        b.userId === user.uid
+      );
+      
       if (existingIdx !== -1) {
         const existing = bills[existingIdx];
         const updatedBill = {
@@ -145,7 +154,7 @@ const App: React.FC = () => {
           totalAmount: existing.totalAmount + newBill.totalAmount,
           notes: (existing.notes || '') + (newBill.notes ? ` | ${newBill.notes}` : ''),
           updatedAt: serverTimestamp(),
-          userId: user.uid // Ensure userId is preserved
+          userId: user.uid
         };
         await setDoc(doc(db, 'bills', existing.id), updatedBill);
         alert(`Merged items into ${newBill.customerName}'s account.`);
