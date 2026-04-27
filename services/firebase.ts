@@ -20,19 +20,6 @@ export const signInWithGoogle = async () => {
 
 export const logout = () => signOut(auth);
 
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log("Firebase Connection Verified");
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration or network.");
-    }
-  }
-}
-
-testConnection();
-
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
