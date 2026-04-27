@@ -1,6 +1,7 @@
 
 export interface Service {
   id: string;
+  userId?: string; // Cloud sync
   name: string;
   defaultRate: number; // rate per sqft or per unit
   category: 'sqft' | 'unit';
@@ -21,6 +22,7 @@ export interface BillItem {
 
 export interface Bill {
   id: string;
+  userId?: string; // Cloud sync
   customerName: string;
   customerPhone: string;
   date: string;
@@ -33,6 +35,7 @@ export interface Bill {
 
 export interface Expense {
   id: string;
+  userId?: string; // Cloud sync
   amount: number;
   date: string;
   description: string;
@@ -40,6 +43,7 @@ export interface Expense {
 
 export interface PersonalTransaction {
   id: string;
+  userId?: string; // Cloud sync
   amount: number;
   date: string;
   description: string;
@@ -49,6 +53,7 @@ export interface PersonalTransaction {
 export type AppView = 'Billing' | 'History' | 'Analytics' | 'Personal';
 
 export interface SubscriptionData {
+  userId?: string; // Cloud sync
   installDate: string;
   isActivated: boolean;
   lastActivationDate?: string;

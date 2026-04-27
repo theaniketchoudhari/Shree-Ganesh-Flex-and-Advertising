@@ -1,0 +1,99 @@
+{
+  "entities": {
+    "Service": {
+      "title": "Service",
+      "description": "Information about a service provided by the business.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "defaultRate": { "type": "number" },
+        "category": { "type": "string", "enum": ["sqft", "unit"] }
+      },
+      "required": ["id", "userId", "name", "defaultRate", "category"]
+    },
+    "Bill": {
+      "title": "Bill",
+      "description": "An invoice for custom orders.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "totalAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Pending", "Paid"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "customerName", "date", "status", "items", "totalAmount"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Business expense records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "userId", "amount", "date", "description"]
+    },
+    "PersonalTransaction": {
+      "title": "PersonalTransaction",
+      "description": "Private financial records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "userId", "amount", "date", "description", "category"]
+    },
+    "UserSubscription": {
+      "title": "UserSubscription",
+      "description": "User account and license status.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "installDate": { "type": "string" },
+        "isActivated": { "type": "boolean" },
+        "lastActivationDate": { "type": "string" },
+        "pendingKey": { "type": "string" }
+      },
+      "required": ["userId", "installDate", "isActivated"]
+    }
+  },
+  "firestore": {
+    "services/{serviceId}": {
+      "schema": "Service",
+      "description": "User custom services."
+    },
+    "bills/{billId}": {
+      "schema": "Bill",
+      "description": "Business invoices."
+    },
+    "expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Business expenses."
+    },
+    "personalTransactions/{transactionId}": {
+      "schema": "PersonalTransaction",
+      "description": "Private transactions."
+    },
+    "subscriptions/{userId}": {
+      "schema": "UserSubscription",
+      "description": "User license data."
+    }
+  }
+}

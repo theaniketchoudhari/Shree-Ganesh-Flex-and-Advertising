@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
-    base: '/', // ✅ REQUIRED for Vercel
+    base: '/',
     define: {
       // This is the CRITICAL part for Vercel. 
       // It maps your Vercel Environment Variable to the code.

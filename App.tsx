@@ -6,8 +6,25 @@ import HistoryView from './components/HistoryView';
 import InsightsView from './components/InsightsView';
 import PersonalView from './components/PersonalView';
 import LockOverlay from './components/LockOverlay';
+import Login from './components/Login';
+import { auth, db, logout, OperationType, handleFirestoreError } from './services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  updateDoc, 
+  getDoc,
+  serverTimestamp 
+} from 'firebase/firestore';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<AppView>('Billing');
   const [bills, setBills] = useState<Bill[]>([]);
   const [services, setServices] = useState<Service[]>(DEFAULT_SERVICES);
@@ -20,46 +37,77 @@ const App: React.FC = () => {
   
   const [lastSync, setLastSync] = useState<string>(new Date().toLocaleTimeString());
   const [isSyncing, setIsSyncing] = useState(false);
-  const isInitialLoadDone = useRef(false);
 
+  // Auth State
   useEffect(() => {
-    const loadData = () => {
-      try {
-        const savedBills = localStorage.getItem('sganesh_bills');
-        const savedServices = localStorage.getItem('sganesh_services');
-        const savedExpenses = localStorage.getItem('sganesh_expenses');
-        const savedPersonal = localStorage.getItem('sganesh_personal');
-        const savedSub = localStorage.getItem('sganesh_subscription');
-
-        if (savedBills) setBills(JSON.parse(savedBills));
-        if (savedServices) setServices(JSON.parse(savedServices));
-        if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
-        if (savedPersonal) setPersonalTransactions(JSON.parse(savedPersonal));
-        if (savedSub) setSubscription(JSON.parse(savedSub));
-        
-        isInitialLoadDone.current = true;
-      } catch (error) {
-        console.error("Storage Restoration Error:", error);
-      }
-    };
-    loadData();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
+  // Real-time Firestore Listeners
   useEffect(() => {
-    if (isInitialLoadDone.current) {
-      setIsSyncing(true);
-      const timer = setTimeout(() => {
-        localStorage.setItem('sganesh_bills', JSON.stringify(bills));
-        localStorage.setItem('sganesh_services', JSON.stringify(services));
-        localStorage.setItem('sganesh_expenses', JSON.stringify(expenses));
-        localStorage.setItem('sganesh_personal', JSON.stringify(personalTransactions));
-        localStorage.setItem('sganesh_subscription', JSON.stringify(subscription));
-        setLastSync(new Date().toLocaleTimeString());
-        setIsSyncing(false);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [bills, services, expenses, personalTransactions, subscription]);
+    if (!user) return;
+
+    setIsSyncing(true);
+    
+    // Subscriptions
+    const subRef = doc(db, 'subscriptions', user.uid);
+    const unsubSub = onSnapshot(subRef, (snap) => {
+      if (snap.exists()) {
+        setSubscription(snap.data() as SubscriptionData);
+      } else {
+        // Init subscription for new user
+        const initialSub: SubscriptionData = {
+          userId: user.uid,
+          installDate: new Date().toISOString(),
+          isActivated: false,
+          pendingKey: 'SG-' + Math.random().toString(36).substring(7).toUpperCase()
+        };
+        setDoc(subRef, initialSub).catch(e => handleFirestoreError(e, OperationType.CREATE, 'subscriptions'));
+      }
+    }, (e) => handleFirestoreError(e, OperationType.GET, 'subscriptions'));
+
+    // Bills
+    const billsQuery = query(collection(db, 'bills'), where('userId', '==', user.uid));
+    const unsubBills = onSnapshot(billsQuery, (snap) => {
+      const data = snap.docs.map(d => d.data() as Bill).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setBills(data);
+      setLastSync(new Date().toLocaleTimeString());
+      setIsSyncing(false);
+    }, (e) => handleFirestoreError(e, OperationType.LIST, 'bills'));
+
+    // Services
+    const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
+    const unsubServices = onSnapshot(servicesQuery, (snap) => {
+      const customServices = snap.docs.map(d => d.data() as Service);
+      setServices([...DEFAULT_SERVICES, ...customServices]);
+    }, (e) => handleFirestoreError(e, OperationType.LIST, 'services'));
+
+    // Expenses
+    const expensesQuery = query(collection(db, 'expenses'), where('userId', '==', user.uid));
+    const unsubExpenses = onSnapshot(expensesQuery, (snap) => {
+      const data = snap.docs.map(d => d.data() as Expense).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setExpenses(data);
+    }, (e) => handleFirestoreError(e, OperationType.LIST, 'expenses'));
+
+    // Personal Transactions
+    const personalQuery = query(collection(db, 'personalTransactions'), where('userId', '==', user.uid));
+    const unsubPersonal = onSnapshot(personalQuery, (snap) => {
+      const data = snap.docs.map(d => d.data() as PersonalTransaction).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setPersonalTransactions(data);
+    }, (e) => handleFirestoreError(e, OperationType.LIST, 'personalTransactions'));
+
+    return () => {
+      unsubSub();
+      unsubBills();
+      unsubServices();
+      unsubExpenses();
+      unsubPersonal();
+    };
+  }, [user]);
 
   // Activation Logic
   const PREMIUM_DAYS = 30;
@@ -81,68 +129,141 @@ const App: React.FC = () => {
 
   const isLocked = !subscription.isActivated && daysLeft <= 0;
 
-  const addBill = useCallback((newBill: Bill) => {
-    setBills(prev => {
-      const existingIdx = prev.findIndex(b => b.status === 'Pending' && b.customerPhone === newBill.customerPhone && b.customerPhone !== '');
+  const addBill = async (newBill: Bill) => {
+    if (!user) return;
+    try {
+      const existingIdx = bills.findIndex(b => b.status === 'Pending' && b.customerPhone === newBill.customerPhone && b.customerPhone !== '');
       if (existingIdx !== -1) {
-        const updated = [...prev];
-        const existing = updated[existingIdx];
-        updated[existingIdx] = {
+        const existing = bills[existingIdx];
+        const updatedBill = {
           ...existing,
           items: [...existing.items, ...newBill.items],
           totalAmount: existing.totalAmount + newBill.totalAmount,
-          notes: existing.notes + (newBill.notes ? ` | ${newBill.notes}` : '')
+          notes: existing.notes + (newBill.notes ? ` | ${newBill.notes}` : ''),
+          updatedAt: serverTimestamp()
         };
+        await setDoc(doc(db, 'bills', existing.id), updatedBill);
         alert(`Merged items into ${newBill.customerName}'s account.`);
-        return updated;
+      } else {
+        await setDoc(doc(db, 'bills', newBill.id), { 
+          ...newBill, 
+          userId: user.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
       }
-      return [newBill, ...prev];
-    });
-  }, []);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'bills');
+    }
+  };
 
-  const updateItemStatus = (billId: string, itemId: string, status: 'Pending' | 'Paid') => {
-    setBills(prev => prev.map(bill => {
-      if (bill.id !== billId) return bill;
-      const items = bill.items.map(i => i.id === itemId ? { ...i, status } : i);
-      const allPaid = items.every(i => i.status === 'Paid');
-      return { ...bill, items, status: allPaid ? 'Paid' : 'Pending' };
-    }));
+  const updateItemStatus = async (billId: string, itemId: string, status: 'Pending' | 'Paid') => {
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) return;
+    const items = bill.items.map(i => i.id === itemId ? { ...i, status } : i);
+    const allPaid = items.every(i => i.status === 'Paid');
+    try {
+      await updateDoc(doc(db, 'bills', billId), { 
+        items, 
+        status: allPaid ? 'Paid' : 'Pending',
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'bills');
+    }
+  };
+
+  const deleteBill = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'bills', id));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'bills');
+    }
+  };
+
+  const addService = async (s: Service) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'services', s.id), { ...s, userId: user.uid });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'services');
+    }
+  };
+
+  const deleteService = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'services', id));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'services');
+    }
+  };
+
+  const addExpense = async (e: Expense) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'expenses', e.id), { ...e, userId: user.uid });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'expenses');
+    }
+  };
+
+  const deleteExpense = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'expenses', id));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'expenses');
+    }
+  };
+
+  const addPersonal = async (t: PersonalTransaction) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'personalTransactions', t.id), { ...t, userId: user.uid });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'personalTransactions');
+    }
+  };
+
+  const deletePersonal = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'personalTransactions', id));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'personalTransactions');
+    }
+  };
+
+  const activateSubscription = async () => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, 'subscriptions', user.uid), {
+        isActivated: true,
+        lastActivationDate: new Date().toISOString()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'subscriptions');
+    }
   };
 
   const exportCSV = () => {
-    // Detailed headers for professional reporting
     const headers = [
       "Invoice ID", "Date", "Time", "Customer Name", "Contact",
       "Item Service", "Width (ft)", "Height (ft)", "Sqft/Unit", "Rate", "Qty",
       "Item Amount", "Item Payment", "Grand Total", "Bill Status", "Office Notes"
     ];
-
     const rows: string[] = [];
-
     bills.forEach(bill => {
       bill.items.forEach(item => {
         const rowData = [
-          `"${bill.id}"`,
-          `"${bill.date}"`,
-          `"${bill.time}"`,
-          `"${bill.customerName.replace(/"/g, '""')}"`,
-          `"${bill.customerPhone}"`,
-          `"${item.serviceName.replace(/"/g, '""')}"`,
-          item.width,
-          item.height,
-          item.sqft.toFixed(2),
-          item.rate,
-          item.quantity,
-          item.amount,
-          `"${item.status}"`,
-          bill.totalAmount,
-          `"${bill.status}"`,
+          `"${bill.id}"`, `"${bill.date}"`, `"${bill.time}"`,
+          `"${bill.customerName.replace(/"/g, '""')}"`, `"${bill.customerPhone}"`,
+          `"${item.serviceName.replace(/"/g, '""')}"`, item.width, item.height,
+          item.sqft.toFixed(2), item.rate, item.quantity, item.amount,
+          `"${item.status}"`, bill.totalAmount, `"${bill.status}"`,
           `"${bill.notes.replace(/"/g, '""')}"`
         ];
         rows.push(rowData.join(","));
       });
     });
-
     const csvContent = [headers.join(","), ...rows].join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -154,6 +275,18 @@ const App: React.FC = () => {
     document.body.removeChild(link);
   };
 
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-[#0F172A]">
+        <div className="spinner"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
   return (
     <div className="h-screen flex flex-col md:flex-row bg-[#F8FAFC] font-sans overflow-hidden">
       <style>{`
@@ -161,9 +294,18 @@ const App: React.FC = () => {
         .thin-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
         @keyframes pulse-io { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         .pulse-io { animation: pulse-io 2s infinite; }
+        .spinner {
+          width: 56px;
+          height: 56px;
+          border: 6px solid rgba(255, 255, 255, 0.1);
+          border-top: 6px solid #EA580C;
+          border-radius: 50%;
+          animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
 
-      {isLocked && <LockOverlay onActivate={() => setSubscription(prev => ({ ...prev, isActivated: true, lastActivationDate: new Date().toISOString() }))} pendingKey={subscription.pendingKey || 'SG-KEY'} />}
+      {isLocked && <LockOverlay onActivate={activateSubscription} pendingKey={subscription.pendingKey || 'SG-KEY'} />}
 
       {/* Nav Sidebar */}
       <nav className="w-full md:w-80 bg-[#0F172A] text-white flex flex-col flex-shrink-0 z-20 shadow-2xl">
@@ -176,6 +318,16 @@ const App: React.FC = () => {
               <h1 className="text-2xl font-black tracking-tighter leading-none">SHREE GANESH</h1>
               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em]">Business ERP v8.0</span>
             </div>
+          </div>
+          <div className="flex items-center gap-3 mt-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700/50 group">
+            <img src={user.photoURL || ''} alt="Avatar" className="w-8 h-8 rounded-full border border-orange-500/50" />
+            <div className="flex-1 overflow-hidden">
+               <div className="text-[10px] font-black text-white truncate">{user.displayName}</div>
+               <div className="text-[8px] text-slate-500 truncate uppercase tracking-widest">{user.email}</div>
+            </div>
+            <button onClick={logout} className="text-slate-500 hover:text-white transition-colors">
+               <i className="fas fa-sign-out-alt text-xs"></i>
+            </button>
           </div>
         </div>
 
@@ -222,7 +374,7 @@ const App: React.FC = () => {
           </button>
           <div className="flex items-center justify-center gap-2">
              <div className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-orange-500 animate-spin' : 'bg-green-500 pulse-io'}`}></div>
-             <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">Secure Layer Online</span>
+             <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">Cloud Layer Online</span>
           </div>
         </div>
       </nav>
@@ -230,19 +382,19 @@ const App: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto thin-scrollbar relative p-8 md:p-16">
         <div className="max-w-7xl mx-auto pb-20">
-          {view === 'Billing' && <BillingView services={services} onSave={addBill} onAddService={s => setServices(p => [...p, s])} onDeleteService={id => setServices(p => p.filter(s => s.id !== id))} />}
-          {view === 'History' && <HistoryView bills={bills} onUpdateItemStatus={updateItemStatus} onDelete={id => setBills(p => p.filter(b => b.id !== id))} />}
-          {view === 'Analytics' && <InsightsView bills={bills} expenses={expenses} onAddExpense={e => setExpenses(p => [e, ...p])} onDeleteExpense={id => setExpenses(p => p.filter(e => e.id !== id))} />}
-          {view === 'Personal' && <PersonalView transactions={personalTransactions} onAdd={t => setPersonalTransactions(p => [t, ...p])} onDelete={id => setPersonalTransactions(p => p.filter(t => t.id !== id))} />}
+          {view === 'Billing' && <BillingView services={services} onSave={addBill} onAddService={addService} onDeleteService={deleteService} />}
+          {view === 'History' && <HistoryView bills={bills} onUpdateItemStatus={updateItemStatus} onDelete={deleteBill} />}
+          {view === 'Analytics' && <InsightsView bills={bills} expenses={expenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} />}
+          {view === 'Personal' && <PersonalView transactions={personalTransactions} onAdd={addPersonal} onDelete={deletePersonal} />}
         </div>
       </main>
 
       <div className="fixed bottom-0 left-0 w-full bg-[#0F172A] border-t border-slate-800 h-10 flex items-center px-10 overflow-hidden z-30">
         <div className="whitespace-nowrap flex items-center gap-10 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-           <span>DB Sync: {lastSync}</span>
+           <span>Cloud Sync: {lastSync}</span>
            <span className="text-orange-600">Developer Support: +91 9960967852</span>
-           <span>Persistent Engine: V8.0.2 Stable</span>
-           <span>Storage Cache: {(JSON.stringify(bills).length / 1024).toFixed(1)} KB</span>
+           <span>Persistent Engine: Cloud V1.0 Stable</span>
+           <span>User Node: {user.uid.substring(0, 8)}</span>
         </div>
       </div>
     </div>
