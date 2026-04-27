@@ -49,7 +49,7 @@ const App: React.FC = () => {
     isActivated: false
   });
   
-  const [lastSync, setLastSync] = useState<string>(new Date().toLocaleTimeString());
+  const [lastSync, setLastSync] = useState<string>(() => localStorage.getItem('shree_ganesh_last_sync') || 'Never');
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Auth State
@@ -91,9 +91,15 @@ const App: React.FC = () => {
       const data = snap.docs.map(d => d.data() as Bill).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       setBills(data);
       localStorage.setItem('shree_ganesh_bills', JSON.stringify(data));
-      setLastSync(new Date().toLocaleTimeString());
+      const syncTime = new Date().toLocaleTimeString();
+      setLastSync(syncTime);
+      localStorage.setItem('shree_ganesh_last_sync', syncTime);
       setIsSyncing(false);
-    }, (e) => handleFirestoreError(e, OperationType.LIST, 'bills'));
+    }, (e) => {
+      console.error("Firebase Sync Error (Bills):", e);
+      setIsSyncing(false);
+      handleFirestoreError(e, OperationType.LIST, 'bills');
+    });
 
     // Services
     const servicesQuery = query(collection(db, 'services'), where('userId', '==', user.uid));
@@ -431,12 +437,27 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <div className="fixed bottom-0 left-0 w-full bg-[#0F172A] border-t border-slate-800 h-10 flex items-center px-10 overflow-hidden z-30">
-        <div className="whitespace-nowrap flex items-center gap-10 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-           <span>Cloud Sync: {lastSync}</span>
-           <span className="text-orange-600">Developer Support: +91 9960967852</span>
-           <span>Persistent Engine: Cloud V1.0 Stable</span>
-           <span>User Node: {user.uid.substring(0, 8)}</span>
+      <div className="fixed bottom-0 left-0 w-full bg-[#0F172A] border-t border-slate-800 h-10 flex items-center px-6 overflow-hidden z-30">
+        <div className="w-full flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+           <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                 <div className={`w-1.5 h-1.5 rounded-full ${isSyncing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`}></div>
+                 <span>Sync: {lastSync}</span>
+              </div>
+              <span className="hidden md:inline text-orange-600">Support: +91 9960967852</span>
+           </div>
+           
+           <div className="flex items-center gap-6">
+              <span className="hidden lg:inline opacity-50">Local Engine: Hybrid V1.2 (Active)</span>
+              <span>Node: {user.uid.substring(0, 8).toUpperCase()}</span>
+              <button 
+                onClick={() => window.location.reload()}
+                className="bg-slate-800 hover:bg-slate-700 text-white px-2 py-0.5 rounded border border-slate-700 transition-colors"
+                title="Force Refresh Data"
+              >
+                <i className="fas fa-sync-alt"></i>
+              </button>
+           </div>
         </div>
       </div>
     </div>
