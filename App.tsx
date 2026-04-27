@@ -26,10 +26,24 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<AppView>('Billing');
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [services, setServices] = useState<Service[]>(DEFAULT_SERVICES);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [personalTransactions, setPersonalTransactions] = useState<PersonalTransaction[]>([]);
+  
+  // Initial load from LocalStorage for speed (cached per user if possible, or generic if not)
+  const [bills, setBills] = useState<Bill[]>(() => {
+    const saved = localStorage.getItem('shree_ganesh_bills');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [services, setServices] = useState<Service[]>(() => {
+    const saved = localStorage.getItem('shree_ganesh_services');
+    return saved ? [...DEFAULT_SERVICES, ...JSON.parse(saved)] : DEFAULT_SERVICES;
+  });
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    const saved = localStorage.getItem('shree_ganesh_expenses');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [personalTransactions, setPersonalTransactions] = useState<PersonalTransaction[]>(() => {
+    const saved = localStorage.getItem('shree_ganesh_personal');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [subscription, setSubscription] = useState<SubscriptionData>({
     installDate: new Date().toISOString(),
     isActivated: false
@@ -76,6 +90,7 @@ const App: React.FC = () => {
       console.log("Bills sync:", snap.size);
       const data = snap.docs.map(d => d.data() as Bill).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       setBills(data);
+      localStorage.setItem('shree_ganesh_bills', JSON.stringify(data));
       setLastSync(new Date().toLocaleTimeString());
       setIsSyncing(false);
     }, (e) => handleFirestoreError(e, OperationType.LIST, 'bills'));
@@ -85,6 +100,7 @@ const App: React.FC = () => {
     const unsubServices = onSnapshot(servicesQuery, (snap) => {
       const customServices = snap.docs.map(d => d.data() as Service);
       setServices([...DEFAULT_SERVICES, ...customServices]);
+      localStorage.setItem('shree_ganesh_services', JSON.stringify(customServices));
     }, (e) => handleFirestoreError(e, OperationType.LIST, 'services'));
 
     // Expenses
@@ -93,6 +109,7 @@ const App: React.FC = () => {
       console.log("Expenses sync:", snap.size);
       const data = snap.docs.map(d => d.data() as Expense).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setExpenses(data);
+      localStorage.setItem('shree_ganesh_expenses', JSON.stringify(data));
     }, (e) => handleFirestoreError(e, OperationType.LIST, 'expenses'));
 
     // Personal Transactions
@@ -101,6 +118,7 @@ const App: React.FC = () => {
       console.log("Personal transactions sync:", snap.size);
       const data = snap.docs.map(d => d.data() as PersonalTransaction).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setPersonalTransactions(data);
+      localStorage.setItem('shree_ganesh_personal', JSON.stringify(data));
     }, (e) => handleFirestoreError(e, OperationType.LIST, 'personalTransactions'));
 
     return () => {
