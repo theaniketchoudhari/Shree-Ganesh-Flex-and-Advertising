@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, updateDoc, setDoc, deleteDoc, collection, query, where, onSnapshot, serverTimestamp, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
 import firebaseConfigImport from '../firebase-applet-config.json';
 
 const firebaseConfig = {
@@ -17,6 +17,18 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export { doc, getDoc, updateDoc, setDoc, deleteDoc, collection, query, where, onSnapshot, serverTimestamp };
+
+// Enable Persistence
+if (typeof window !== 'undefined') {
+  enableMultiTabIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn('Persistence failed: Multiple tabs open');
+    } else if (err.code === 'unimplemented') {
+      console.warn('Persistence failed: Browser not supported');
+    }
+  });
+}
 
 export const signInWithGoogle = async () => {
   try {

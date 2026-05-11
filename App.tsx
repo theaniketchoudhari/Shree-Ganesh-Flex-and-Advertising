@@ -5,22 +5,27 @@ import BillingView from './components/BillingView';
 import HistoryView from './components/HistoryView';
 import InsightsView from './components/InsightsView';
 import PersonalView from './components/PersonalView';
+import PublicInvoiceView from './components/PublicInvoiceView';
 import LockOverlay from './components/LockOverlay';
 import Login from './components/Login';
-import { auth, db, logout, OperationType, handleFirestoreError } from './services/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
 import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  doc, 
-  setDoc, 
-  deleteDoc, 
-  updateDoc, 
+  auth, 
+  db, 
+  logout, 
+  OperationType, 
+  handleFirestoreError,
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  setDoc,
+  deleteDoc,
+  updateDoc,
   getDoc,
-  serverTimestamp 
-} from 'firebase/firestore';
+  serverTimestamp
+} from './services/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -51,6 +56,30 @@ const App: React.FC = () => {
   
   const [lastSync, setLastSync] = useState<string>(() => localStorage.getItem('shree_ganesh_last_sync') || 'Never');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [publicBill, setPublicBill] = useState<Bill | null>(null);
+  const [fetchingPublic, setFetchingPublic] = useState(false);
+
+  // Check for public invoice link
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const invId = params.get('inv');
+    if (invId) {
+      setFetchingPublic(true);
+      const billRef = doc(db, 'bills', invId);
+      getDoc(billRef).then(snap => {
+        if (snap.exists()) {
+          setPublicBill(snap.data() as Bill);
+        } else {
+          console.error("Public Bill not found:", invId);
+          alert("Invoice not found or expired.");
+        }
+        setFetchingPublic(false);
+      }).catch(e => {
+        console.error("Error fetching public bill:", e);
+        setFetchingPublic(false);
+      });
+    }
+  }, []);
 
   // Auth State
   useEffect(() => {
@@ -163,6 +192,11 @@ const App: React.FC = () => {
     }
     try {
       console.log("Saving Bill:", newBill.id, "for user:", user.uid);
+      
+      // OPTIMISTIC UPDATE: Update local state immediately for instant feedback
+      const billWithUser = { ...newBill, userId: user.uid };
+      setBills(prev => [billWithUser, ...prev]);
+
       const existingIdx = bills.findIndex(b => 
         b.status === 'Pending' && 
         b.customerPhone === newBill.customerPhone && 
@@ -182,19 +216,19 @@ const App: React.FC = () => {
         };
         await setDoc(doc(db, 'bills', existing.id), updatedBill);
         console.log("Bill Merged Successfully");
-        alert(`Merged items into ${newBill.customerName}'s existing account.`);
       } else {
         await setDoc(doc(db, 'bills', newBill.id), { 
-          ...newBill, 
-          userId: user.uid,
+          ...billWithUser, 
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
         console.log("Bill Saved Successfully:", newBill.id);
-        alert("Invoice Generated and Saved Successfully!");
       }
+      alert("Invoice Generated and Saved Successfully!");
     } catch (e) {
       console.error("Error saving bill:", e);
+      // Rollback optimistic update if failed
+      setBills(prev => prev.filter(b => b.id !== newBill.id));
       handleFirestoreError(e, OperationType.WRITE, 'bills');
       alert("Error saving invoice. Please check the console for details.");
     }
@@ -229,9 +263,14 @@ const App: React.FC = () => {
   const addService = async (s: Service) => {
     if (!user) return;
     try {
-      await setDoc(doc(db, 'services', s.id), { ...s, userId: user.uid });
+      // Optimistic update
+      const serviceWithUser = { ...s, userId: user.uid };
+      setServices(prev => [...prev, serviceWithUser]);
+      
+      await setDoc(doc(db, 'services', s.id), serviceWithUser);
       alert("Service saved.");
     } catch (e) {
+      setServices(prev => prev.filter(item => item.id !== s.id));
       handleFirestoreError(e, OperationType.WRITE, 'services');
     }
   };
@@ -247,10 +286,15 @@ const App: React.FC = () => {
   const addExpense = async (e: Expense) => {
     if (!user) return;
     try {
-      await setDoc(doc(db, 'expenses', e.id), { ...e, userId: user.uid });
+      // Optimistic update
+      const expenseWithUser = { ...e, userId: user.uid };
+      setExpenses(prev => [expenseWithUser, ...prev]);
+
+      await setDoc(doc(db, 'expenses', e.id), expenseWithUser);
       alert("Expense recorded.");
-    } catch (e) {
-      handleFirestoreError(e, OperationType.WRITE, 'expenses');
+    } catch (err) {
+      setExpenses(prev => prev.filter(item => item.id !== e.id));
+      handleFirestoreError(err, OperationType.WRITE, 'expenses');
     }
   };
 
@@ -265,9 +309,14 @@ const App: React.FC = () => {
   const addPersonal = async (t: PersonalTransaction) => {
     if (!user) return;
     try {
-      await setDoc(doc(db, 'personalTransactions', t.id), { ...t, userId: user.uid });
+      // Optimistic update
+      const transWithUser = { ...t, userId: user.uid };
+      setPersonalTransactions(prev => [transWithUser, ...prev]);
+
+      await setDoc(doc(db, 'personalTransactions', t.id), transWithUser);
       alert("Personal transaction saved.");
     } catch (e) {
+      setPersonalTransactions(prev => prev.filter(item => item.id !== t.id));
       handleFirestoreError(e, OperationType.WRITE, 'personalTransactions');
     }
   };
@@ -329,6 +378,21 @@ const App: React.FC = () => {
         <div className="spinner"></div>
       </div>
     );
+  }
+
+  if (fetchingPublic) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-[#0F172A]">
+        <div className="flex flex-col items-center gap-6">
+          <div className="spinner"></div>
+          <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em]">Fetching Secure Invoice...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (publicBill) {
+    return <PublicInvoiceView bill={publicBill} />;
   }
 
   if (!user) {

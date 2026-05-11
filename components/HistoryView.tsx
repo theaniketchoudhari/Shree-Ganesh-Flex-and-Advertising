@@ -33,6 +33,15 @@ const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, on
     window.open(`https://wa.me/${phone.startsWith('91') ? phone : '91' + phone}?text=${encodedMsg}`, '_blank');
   };
 
+  const handleShareLink = (billId: string) => {
+    const url = `${window.location.origin}${window.location.pathname}?inv=${billId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      alert("Invoice link copied to clipboard!");
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+    });
+  };
+
   const exportToCSV = () => {
     const headers = ['Order ID', 'Date', 'Customer', 'Phone', 'Items', 'Total', 'Status', 'Notes'];
     const rows = filteredBills.map(bill => [
@@ -145,6 +154,13 @@ const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, on
                             <i className={`fab fa-whatsapp ${sendingId === bill.id ? 'animate-spin' : ''}`}></i>
                           </button>
                         )}
+                        <button
+                          onClick={() => handleShareLink(bill.id)}
+                          className="p-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl"
+                          title="Copy Public Link"
+                        >
+                          <i className="fas fa-link"></i>
+                        </button>
                         <button
                           onClick={() => onDelete(bill.id)}
                           className="p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl"
