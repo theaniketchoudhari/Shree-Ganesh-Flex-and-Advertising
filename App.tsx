@@ -58,7 +58,10 @@ const App: React.FC = () => {
   const [lastSync, setLastSync] = useState<string>(() => localStorage.getItem('shree_ganesh_last_sync') || 'Never');
   const [isSyncing, setIsSyncing] = useState(false);
   const [publicBill, setPublicBill] = useState<Bill | null>(null);
-  const [fetchingPublic, setFetchingPublic] = useState(false);
+  const [fetchingPublic, setFetchingPublic] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('inv');
+  });
 
   // Check for public invoice link
   useEffect(() => {
