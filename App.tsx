@@ -253,6 +253,8 @@ const App: React.FC = () => {
 
   const updateBill = async (billId: string, updates: Partial<Bill>) => {
     try {
+      // Optimistic update
+      setBills(prev => prev.map(b => b.id === billId ? { ...b, ...updates } : b));
       await updateDoc(doc(db, 'bills', billId), {
         ...updates,
         updatedAt: serverTimestamp()
@@ -267,10 +269,17 @@ const App: React.FC = () => {
     if (!bill) return;
     try {
       const updatedItems = bill.items.map(i => ({ ...i, status: 'Paid' as 'Paid' }));
-      await updateDoc(doc(db, 'bills', billId), {
+      const updates = {
         items: updatedItems,
         receivedAmount: bill.totalAmount,
-        status: 'Paid',
+        status: 'Paid' as const
+      };
+      
+      // Optimistic update
+      setBills(prev => prev.map(b => b.id === billId ? { ...b, ...updates } : b));
+      
+      await updateDoc(doc(db, 'bills', billId), {
+        ...updates,
         updatedAt: serverTimestamp()
       });
     } catch (e) {

@@ -5,6 +5,10 @@ interface PublicInvoiceViewProps {
   bill: Bill;
 }
 
+/**
+ * PublicInvoiceView renders the customer-facing invoice template
+ * Optimized for A4 and Thermal printing layouts.
+ */
 const PublicInvoiceView: React.FC<PublicInvoiceViewProps> = ({ bill }) => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
