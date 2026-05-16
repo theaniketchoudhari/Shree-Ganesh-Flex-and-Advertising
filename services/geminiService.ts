@@ -6,13 +6,14 @@ import { Bill } from "../types";
  * This function handles the communication between the ERP and the customer.
  */
 export const generateReminderMessage = async (bill: Bill): Promise<string> => {
-  const apiKey = process.env.API_KEY;
+  // Use Vite's environment variable convention
+  const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
   
   // Standard fallback message in case the API call fails or key is missing
   const fallback = `Namaste ${bill.customerName}, this is a reminder from Shree Ganesh Flex & Advertising regarding your pending payment of ₹${bill.totalAmount}. Please settle it at your earliest convenience. Thank you!`;
 
   if (!apiKey || apiKey === 'undefined') {
-    console.warn("API_KEY not found in environment. Using fallback message.");
+    console.warn("VITE_GEMINI_API_KEY not found in environment. Using fallback message.");
     return fallback;
   }
 
@@ -21,7 +22,7 @@ export const generateReminderMessage = async (bill: Bill): Promise<string> => {
     
     // We use gemini-3-flash-preview for fast and cost-effective text generation
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: [{
         parts: [{
           text: `You are the office assistant at 'Shree Ganesh Flex & Advertising'. 

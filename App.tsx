@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bill, Service, AppView, Expense, PersonalTransaction, SubscriptionData } from './types';
 import { DEFAULT_SERVICES } from './constants';
 import BillingView from './components/BillingView';
@@ -484,10 +484,10 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3 mt-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700/50 group">
-            <img src={user.photoURL || ''} alt="Avatar" className="w-8 h-8 rounded-full border border-orange-500/50" />
+            <img src={user?.photoURL || ''} alt="Avatar" className="w-8 h-8 rounded-full border border-orange-500/50" />
             <div className="flex-1 overflow-hidden">
-               <div className="text-[10px] font-black text-white truncate">{user.displayName}</div>
-               <div className="text-[8px] text-slate-500 truncate uppercase tracking-widest">{user.email}</div>
+               <div className="text-[10px] font-black text-white truncate">{user?.displayName}</div>
+               <div className="text-[8px] text-slate-500 truncate uppercase tracking-widest">{user?.email}</div>
             </div>
             <button onClick={logout} className="text-slate-500 hover:text-white transition-colors">
                <i className="fas fa-sign-out-alt text-xs"></i>
@@ -587,7 +587,7 @@ const App: React.FC = () => {
            
            <div className="flex items-center gap-6">
               <span className="hidden lg:inline opacity-50">Local Engine: Hybrid V1.2 (Active)</span>
-              <span>Node: {user.uid.substring(0, 8).toUpperCase()}</span>
+              <span>Node: {user?.uid.substring(0, 8).toUpperCase()}</span>
               <button 
                 onClick={() => window.location.reload()}
                 className="bg-slate-800 hover:bg-slate-700 text-white px-2 py-0.5 rounded border border-slate-700 transition-colors"
