@@ -84,12 +84,9 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
     setManualTotal(null);
     setReceivedAmount(0);
 
-    // Auto open print dialog by redirecting or showing a print-ready component
-    // For now, the App component handles view switching, but we can suggest printing
-    if (window.confirm("Invoice saved! Would you like to print it now?")) {
-      const url = `${window.location.origin}${window.location.pathname}?inv=${newBill.id}&print=true`;
-      window.open(url, '_blank');
-    }
+    // Auto open print dialog by redirecting
+    const url = `${window.location.origin}${window.location.pathname}?inv=${newBill.id}&print=true`;
+    window.open(url, '_blank');
   };
 
   const handleDeleteService = (id: string) => {

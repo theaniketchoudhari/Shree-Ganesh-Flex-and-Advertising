@@ -265,9 +265,11 @@ const App: React.FC = () => {
   const deleteBill = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this invoice?")) return;
     try {
+      // Optimistic update
+      setBills(prev => prev.filter(b => b.id !== id));
       await deleteDoc(doc(db, 'bills', id));
-      alert("Invoice deleted.");
     } catch (e) {
+      // Re-sync will handle restoration if needed, or we could manually restore
       handleFirestoreError(e, OperationType.DELETE, 'bills');
     }
   };
@@ -289,6 +291,8 @@ const App: React.FC = () => {
 
   const deleteService = async (id: string) => {
     try {
+      // Optimistic update
+      setServices(prev => prev.filter(s => s.id !== id));
       await deleteDoc(doc(db, 'services', id));
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, 'services');
@@ -312,6 +316,8 @@ const App: React.FC = () => {
 
   const deleteExpense = async (id: string) => {
     try {
+      // Optimistic update
+      setExpenses(prev => prev.filter(e => e.id !== id));
       await deleteDoc(doc(db, 'expenses', id));
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, 'expenses');
@@ -335,6 +341,8 @@ const App: React.FC = () => {
 
   const deletePersonal = async (id: string) => {
     try {
+      // Optimistic update
+      setPersonalTransactions(prev => prev.filter(t => t.id !== id));
       await deleteDoc(doc(db, 'personalTransactions', id));
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, 'personalTransactions');

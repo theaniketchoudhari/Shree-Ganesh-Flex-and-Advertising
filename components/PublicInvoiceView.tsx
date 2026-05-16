@@ -11,7 +11,7 @@ const PublicInvoiceView: React.FC<PublicInvoiceViewProps> = ({ bill }) => {
     if (params.get('print') === 'true') {
       setTimeout(() => {
         window.print();
-      }, 1000);
+      }, 500);
     }
   }, []);
 
