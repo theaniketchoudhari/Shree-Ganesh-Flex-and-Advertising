@@ -7,10 +7,11 @@ interface HistoryViewProps {
   bills: Bill[];
   onUpdateItemStatus: (billId: string, itemId: string, status: 'Pending' | 'Paid') => void;
   onUpdateBill: (billId: string, updates: Partial<Bill>) => void;
+  onMarkPaid: (billId: string) => void;
   onDelete: (id: string) => void;
 }
 
-const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, onUpdateBill, onDelete }) => {
+const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, onUpdateBill, onMarkPaid, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -143,18 +144,21 @@ const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, on
                       <div className="flex flex-col">
                         <div className="text-lg font-black text-slate-800">₹{bill.totalAmount.toLocaleString('en-IN')}</div>
                         <div className="flex items-center gap-2 mt-2">
-                           <div className="flex flex-col">
-                             <span className="text-[8px] font-black text-slate-400 uppercase">Received</span>
-                             <input 
-                               type="number"
-                               className="w-20 bg-slate-50 border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-green-500 rounded-lg px-2 py-1 text-xs font-black text-green-600 outline-none"
-                               value={bill.receivedAmount || 0}
-                               onChange={e => handleUpdateReceived(bill.id, parseFloat(e.target.value) || 0)}
-                             />
+                           <div className="flex flex-col flex-1">
+                             <span className="text-[8px] font-black text-slate-400 uppercase mb-1">Advance Received</span>
+                             <div className="flex items-center">
+                               <span className="text-[10px] mr-1 text-green-600 font-black">₹</span>
+                               <input 
+                                 type="number"
+                                 className="w-full bg-green-50 border border-green-100 focus:ring-2 focus:ring-green-500 rounded-lg px-2 py-1.5 text-xs font-black text-green-700 outline-none transition-all"
+                                 value={bill.receivedAmount || 0}
+                                 onChange={e => handleUpdateReceived(bill.id, parseFloat(e.target.value) || 0)}
+                               />
+                             </div>
                            </div>
                            <div className="flex flex-col">
                              <span className="text-[8px] font-black text-slate-400 uppercase">Pending</span>
-                             <div className="text-[11px] font-black text-red-500 px-2 py-1">₹{(bill.totalAmount - (bill.receivedAmount || 0)).toLocaleString('en-IN')}</div>
+                             <div className="text-[11px] font-black text-red-500 bg-red-50 px-2 py-1.5 rounded-lg border border-red-100">₹{(bill.totalAmount - (bill.receivedAmount || 0)).toLocaleString('en-IN')}</div>
                            </div>
                         </div>
                       </div>
@@ -173,6 +177,15 @@ const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, on
                     </td>
                     <td className="px-6 py-5 text-right">
                       <div className="flex justify-end gap-2">
+                        {bill.status === 'Pending' && (
+                          <button
+                            onClick={() => onMarkPaid(bill.id)}
+                            className="p-2.5 text-white bg-green-500 hover:bg-green-600 rounded-xl transition-all shadow-lg shadow-green-100"
+                            title="Mark Entire Bill as Paid"
+                          >
+                            <i className="fas fa-check-double"></i>
+                          </button>
+                        )}
                         <button
                           onClick={() => handleWhatsApp(bill)}
                           className="p-2.5 text-green-600 bg-green-50 hover:bg-green-100 rounded-xl transition-all"

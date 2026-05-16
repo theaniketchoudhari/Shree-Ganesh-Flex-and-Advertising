@@ -262,6 +262,22 @@ const App: React.FC = () => {
     }
   };
 
+  const markBillAsPaid = async (billId: string) => {
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) return;
+    try {
+      const updatedItems = bill.items.map(i => ({ ...i, status: 'Paid' as 'Paid' }));
+      await updateDoc(doc(db, 'bills', billId), {
+        items: updatedItems,
+        receivedAmount: bill.totalAmount,
+        status: 'Paid',
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'bills');
+    }
+  };
+
   const deleteBill = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this invoice?")) return;
     try {
@@ -392,14 +408,6 @@ const App: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  if (loading) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#0F172A]">
-        <div className="spinner"></div>
-      </div>
-    );
-  }
-
   if (fetchingPublic) {
     return (
       <div className="h-screen w-full flex items-center justify-center bg-[#0F172A]">
@@ -415,8 +423,16 @@ const App: React.FC = () => {
     return <PublicInvoiceView bill={publicBill} />;
   }
 
-  if (!user) {
+  if (!user && !loading) {
     return <Login />;
+  }
+
+  if (loading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-[#0F172A]">
+        <div className="spinner"></div>
+      </div>
+    );
   }
 
   return (
@@ -544,7 +560,7 @@ const App: React.FC = () => {
         </div>
         <div className="max-w-7xl mx-auto pb-20">
           {view === 'Billing' && <BillingView services={services} onSave={addBill} onAddService={addService} onDeleteService={deleteService} />}
-          {view === 'History' && <HistoryView bills={bills} onUpdateItemStatus={updateItemStatus} onUpdateBill={updateBill} onDelete={deleteBill} />}
+          {view === 'History' && <HistoryView bills={bills} onUpdateItemStatus={updateItemStatus} onUpdateBill={updateBill} onMarkPaid={markBillAsPaid} onDelete={deleteBill} />}
           {view === 'Analytics' && <InsightsView bills={bills} expenses={expenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} />}
           {view === 'Personal' && <PersonalView transactions={personalTransactions} onAdd={addPersonal} onDelete={deletePersonal} />}
         </div>

@@ -85,8 +85,8 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
     setReceivedAmount(0);
 
     // Auto open print dialog by redirecting
-    const url = `${window.location.origin}${window.location.pathname}?inv=${newBill.id}&print=true`;
-    window.open(url, '_blank');
+    const printUrl = `${window.location.origin}${window.location.pathname}?inv=${newBill.id}&print=true`;
+    window.open(printUrl, '_blank');
   };
 
   const handleDeleteService = (id: string) => {
