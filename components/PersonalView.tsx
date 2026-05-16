@@ -161,8 +161,8 @@ const PersonalView: React.FC<PersonalViewProps> = ({ transactions, onAdd, onDele
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button 
-                          onClick={() => onDelete(t.id)}
-                          className="text-gray-200 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          onClick={() => { if(window.confirm("Delete this activity?")) onDelete(t.id); }}
+                          className="text-slate-300 hover:text-red-500 transition-colors"
                         >
                           <i className="fas fa-trash-alt text-xs"></i>
                         </button>

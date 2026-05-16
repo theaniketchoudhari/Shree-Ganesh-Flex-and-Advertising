@@ -25,13 +25,16 @@ export interface Bill {
   userId?: string; // Cloud sync
   customerName: string;
   customerPhone: string;
+  customerAddress?: string; // Added for the new template
   date: string;
   time: string;
   items: BillItem[];
   totalAmount: number;
+  receivedAmount: number; // Added: Money Received / Advance
   status: 'Pending' | 'Paid';
   notes: string;
   timestamp?: number;
+  customTotal?: number; // Added: For manual subtotal override
 }
 
 export interface Expense {

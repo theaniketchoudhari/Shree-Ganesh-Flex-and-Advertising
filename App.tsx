@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<AppView>('Billing');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Initial load from LocalStorage for speed (cached per user if possible, or generic if not)
   const [bills, setBills] = useState<Bill[]>(() => {
@@ -250,6 +251,17 @@ const App: React.FC = () => {
     }
   };
 
+  const updateBill = async (billId: string, updates: Partial<Bill>) => {
+    try {
+      await updateDoc(doc(db, 'bills', billId), {
+        ...updates,
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'bills');
+    }
+  };
+
   const deleteBill = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this invoice?")) return;
     try {
@@ -420,7 +432,14 @@ const App: React.FC = () => {
       {isLocked && <LockOverlay onActivate={activateSubscription} pendingKey={subscription.pendingKey || 'SG-KEY'} />}
 
       {/* Nav Sidebar */}
-      <nav className="w-full md:w-80 bg-[#0F172A] text-white flex flex-col flex-shrink-0 z-20 shadow-2xl">
+      <nav className={`fixed inset-y-0 left-0 w-80 bg-[#0F172A] text-white flex flex-col z-50 transition-transform duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <button 
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="absolute top-6 right-6 md:hidden text-slate-400 hover:text-white"
+        >
+          <i className="fas fa-times text-xl"></i>
+        </button>
+
         <div className="p-10 border-b border-slate-800">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-orange-600 rounded-[1.25rem] flex items-center justify-center shadow-2xl shadow-orange-900/50">
@@ -452,7 +471,7 @@ const App: React.FC = () => {
           ].map((item) => (
             <button 
               key={item.id}
-              onClick={() => setView(item.id as AppView)}
+              onClick={() => { setView(item.id as AppView); setIsMobileMenuOpen(false); }}
               className={`w-full text-left px-10 py-5 flex items-center gap-4 transition-all relative group ${view === item.id ? 'bg-orange-600 text-white' : 'text-slate-400 hover:bg-slate-800/50'}`}
             >
               {view === item.id && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-white"></div>}
@@ -491,11 +510,33 @@ const App: React.FC = () => {
         </div>
       </nav>
 
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        ></div>
+      )}
+
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto thin-scrollbar relative p-8 md:p-16">
+      <main className="flex-1 overflow-y-auto thin-scrollbar relative p-4 md:p-16">
+        <div className="md:hidden flex items-center justify-between mb-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center text-white">
+                 <i className="fas fa-print text-xs"></i>
+              </div>
+              <span className="font-black text-xs uppercase tracking-widest">{view}</span>
+           </div>
+           <button 
+             onClick={() => setIsMobileMenuOpen(true)}
+             className="w-10 h-10 flex items-center justify-center bg-slate-900 text-white rounded-xl"
+           >
+              <i className="fas fa-bars"></i>
+           </button>
+        </div>
         <div className="max-w-7xl mx-auto pb-20">
           {view === 'Billing' && <BillingView services={services} onSave={addBill} onAddService={addService} onDeleteService={deleteService} />}
-          {view === 'History' && <HistoryView bills={bills} onUpdateItemStatus={updateItemStatus} onDelete={deleteBill} />}
+          {view === 'History' && <HistoryView bills={bills} onUpdateItemStatus={updateItemStatus} onUpdateBill={updateBill} onDelete={deleteBill} />}
           {view === 'Analytics' && <InsightsView bills={bills} expenses={expenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} />}
           {view === 'Personal' && <PersonalView transactions={personalTransactions} onAdd={addPersonal} onDelete={deletePersonal} />}
         </div>

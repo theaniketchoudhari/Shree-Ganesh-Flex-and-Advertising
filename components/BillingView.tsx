@@ -11,10 +11,13 @@ interface BillingViewProps {
 const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddService, onDeleteService }) => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [selectedItems, setSelectedItems] = useState<BillItem[]>([]);
   const [notes, setNotes] = useState('');
   const [showAddService, setShowAddService] = useState(false);
   const [newService, setNewService] = useState({ name: '', rate: 0, cat: 'sqft' as 'sqft' | 'unit' });
+  const [manualTotal, setManualTotal] = useState<number | null>(null);
+  const [receivedAmount, setReceivedAmount] = useState<number>(0);
 
   const addServiceToBill = (service: Service) => {
     const newItem: BillItem = {
@@ -56,23 +59,43 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
       alert("Required: Customer Name and at least one item.");
       return;
     }
+    const finalTotal = manualTotal !== null ? manualTotal : totalAmount;
     const newBill: Bill = {
       id: `INV-${Date.now()}`,
       customerName,
       customerPhone,
+      customerAddress,
       date: new Date().toISOString().split('T')[0],
       time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
       items: selectedItems,
-      totalAmount,
-      status: 'Pending',
+      totalAmount: finalTotal,
+      receivedAmount,
+      status: receivedAmount >= finalTotal ? 'Paid' : 'Pending',
       notes,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      customTotal: manualTotal !== null ? manualTotal : undefined
     };
     onSave(newBill);
     setCustomerName('');
     setCustomerPhone('');
+    setCustomerAddress('');
     setSelectedItems([]);
     setNotes('');
+    setManualTotal(null);
+    setReceivedAmount(0);
+
+    // Auto open print dialog by redirecting or showing a print-ready component
+    // For now, the App component handles view switching, but we can suggest printing
+    if (window.confirm("Invoice saved! Would you like to print it now?")) {
+      const url = `${window.location.origin}${window.location.pathname}?inv=${newBill.id}&print=true`;
+      window.open(url, '_blank');
+    }
+  };
+
+  const handleDeleteService = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this service?")) {
+      onDeleteService(id);
+    }
   };
 
   return (
@@ -139,7 +162,7 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
                   <div className="text-sm font-bold text-slate-700 mb-1">{s.name}</div>
                   <div className="text-[9px] font-black text-orange-600 bg-orange-100 w-fit px-2 py-0.5 rounded-full uppercase">₹{s.defaultRate} / {s.category}</div>
                 </button>
-                <button onClick={() => onDeleteService(s.id)} className="px-3 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
+                <button onClick={() => handleDeleteService(s.id)} className="px-3 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
                   <i className="fas fa-trash-alt text-[10px]"></i>
                 </button>
               </div>
@@ -173,6 +196,16 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
                     className="w-full bg-slate-50 border-none ring-1 ring-slate-100 focus:ring-2 focus:ring-orange-500 rounded-3xl px-6 py-4 outline-none font-bold text-slate-800 transition-all"
                     value={customerPhone}
                     onChange={e => setCustomerPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-2">Client Address</label>
+                  <input
+                    type="text"
+                    placeholder="Enter Customer Address"
+                    className="w-full bg-slate-50 border-none ring-1 ring-slate-100 focus:ring-2 focus:ring-orange-500 rounded-3xl px-6 py-4 outline-none font-bold text-slate-800 transition-all"
+                    value={customerAddress}
+                    onChange={e => setCustomerAddress(e.target.value)}
                   />
                 </div>
               </div>
@@ -269,20 +302,60 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
                 onChange={e => setNotes(e.target.value)}
               />
             </div>
-            <div className="bg-slate-900 p-10 rounded-[3rem] text-white flex flex-col justify-between shadow-2xl relative overflow-hidden">
+            <div className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col justify-between shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-10">
                  <i className="fas fa-file-invoice-dollar text-7xl -rotate-12"></i>
               </div>
-              <div className="mb-8">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 block mb-2">Total Amount Due</span>
-                <span className="text-5xl font-black text-orange-500 tracking-tighter">₹{totalAmount.toLocaleString('en-IN')}</span>
+              <div className="space-y-6 mb-8 relative z-10">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Calculated Subtotal</span>
+                  <span className="font-bold">₹{totalAmount.toLocaleString('en-IN')}</span>
+                </div>
+                
+                <div className="flex justify-between items-center gap-4">
+                   <div className="flex flex-col">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-orange-400">Final Total</span>
+                      <span className="text-[8px] opacity-50 font-bold">MANUALLY ADJUSTABLE</span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <span className="text-xl font-black text-orange-500">₹</span>
+                      <input 
+                        type="number"
+                        className="w-32 bg-slate-800 border-none ring-1 ring-white/10 focus:ring-2 focus:ring-orange-500 rounded-2xl px-4 py-2 text-xl font-black text-orange-500 outline-none"
+                        value={manualTotal !== null ? manualTotal : totalAmount}
+                        onChange={e => setManualTotal(parseFloat(e.target.value) || 0)}
+                      />
+                   </div>
+                </div>
+
+                <div className="flex justify-between items-center gap-4">
+                   <div className="flex flex-col">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-green-400">Advance Received</span>
+                      <span className="text-[8px] opacity-50 font-bold">MONEY PAID NOW</span>
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <span className="text-xl font-black text-green-500">₹</span>
+                      <input 
+                        type="number"
+                        className="w-32 bg-slate-800 border-none ring-1 ring-white/10 focus:ring-2 focus:ring-green-500 rounded-2xl px-4 py-2 text-xl font-black text-green-500 outline-none"
+                        value={receivedAmount}
+                        onChange={e => setReceivedAmount(parseFloat(e.target.value) || 0)}
+                      />
+                   </div>
+                </div>
+
+                <div className="flex justify-between items-center pt-4 border-t border-white/10">
+                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Balance Pending</span>
+                   <span className="text-xl font-black text-red-400">₹{Math.max(0, (manualTotal !== null ? manualTotal : totalAmount) - receivedAmount).toLocaleString('en-IN')}</span>
+                </div>
               </div>
+
               <button 
                 onClick={handleSave}
                 disabled={selectedItems.length === 0}
-                className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl active:scale-95"
+                className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl active:scale-95 z-10"
               >
-                Generate Bill
+                Generate & Save Bill
               </button>
             </div>
           </div>

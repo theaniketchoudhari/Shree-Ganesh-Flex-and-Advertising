@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Bill } from '../types';
 
 interface PublicInvoiceViewProps {
@@ -6,148 +6,201 @@ interface PublicInvoiceViewProps {
 }
 
 const PublicInvoiceView: React.FC<PublicInvoiceViewProps> = ({ bill }) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('print') === 'true') {
+      setTimeout(() => {
+        window.print();
+      }, 1000);
+    }
+  }, []);
+
   const printInvoice = () => {
     window.print();
   };
 
+  const balanceAmt = (bill.totalAmount || 0) - (bill.receivedAmount || 0);
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0 print:px-0">
-      <div className="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100 print:shadow-none print:border-none print:rounded-none">
-        {/* Invoice Header */}
-        <div className="bg-slate-900 px-10 py-12 text-white flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden print:bg-white print:text-slate-900 print:px-0 print:py-8">
-          <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none print:hidden">
-            <i className="fas fa-file-invoice-dollar text-[120px] -rotate-12"></i>
-          </div>
-          
-          <div className="flex items-center gap-6 z-10">
-            <div className="w-16 h-16 bg-orange-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-orange-900/50 print:bg-orange-600 print:shadow-none">
-              <i className="fas fa-print text-2xl"></i>
-            </div>
-            <div>
-              <h1 className="text-3xl font-black tracking-tighter uppercase leading-none mb-1">Shree Ganesh</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] print:text-slate-500">Flex & Advertising Hub</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-slate-100 py-12 px-4 print:bg-white print:py-0 print:px-0">
+      {/* Container for Invoice */}
+      <div className="max-w-[800px] mx-auto bg-white shadow-2xl overflow-hidden print:shadow-none print:w-full font-serif text-[#4a0404]">
+        
+        {/* Header Section */}
+        <div className="relative border-b-4 border-[#4a0404] p-6">
+           <div className="flex justify-between items-start">
+              <div className="flex gap-4">
+                 <div className="w-20 h-20 bg-[#4a0404] text-white flex items-center justify-center text-5xl font-bold rounded-xl">
+                    G
+                 </div>
+                 <div className="flex flex-col">
+                    <h1 className="text-4xl font-black italic leading-none" style={{ fontFamily: 'serif' }}>श्री Ganesh Flex</h1>
+                    <p className="text-[10px] font-bold mt-1">All Type Of painting Solution</p>
+                    <div className="flex gap-1 mt-1">
+                       {[1,2,3,4].map(i => <div key={i} className="w-2 h-2 rounded-full bg-[#4a0404] opacity-40"></div>)}
+                    </div>
+                 </div>
+              </div>
+              <div className="flex flex-col items-end">
+                 <div className="bg-[#4a0404] text-white px-6 py-2 rounded-full flex items-center gap-3 mb-2">
+                    <i className="fas fa-phone-alt text-sm"></i>
+                    <span className="text-lg font-bold">8530858572 / 7447808572</span>
+                 </div>
+                 <ul className="text-[10px] font-bold text-right grid grid-cols-2 gap-x-4">
+                    <li>• Urgent Flex Printing</li>
+                    <li>• Hordings</li>
+                    <li>• Way Bord Fitting</li>
+                    <li>• Vinly Printing</li>
+                    <li>• Visiting Card</li>
+                    <li>• One Way Vision</li>
+                    <li>• Industrial Printing</li>
+                    <li>• Offset Printing</li>
+                 </ul>
+              </div>
+           </div>
 
-          <div className="text-center md:text-right z-10">
-            <div className="text-[10px] font-black text-orange-500 uppercase tracking-[0.4em] mb-2">Tax Invoice</div>
-            <div className="text-4xl font-black tracking-tighter mb-1">{bill.id}</div>
-            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{bill.date} • {bill.time}</div>
-          </div>
+           <div className="mt-4 bg-[#4a0404] text-white text-center py-1.5 rounded-full text-[11px] font-bold flex items-center justify-center gap-2">
+              <i className="fas fa-map-marker-alt"></i>
+              Address - A/p Pabal, Opp. ST Bus Stand, Tal - Shirur, Dist - Pune - 412 220
+           </div>
         </div>
 
-        {/* Client & Status Section */}
-        <div className="px-10 py-10 border-b border-slate-50 grid grid-cols-1 md:grid-cols-2 gap-10 print:px-0">
-          <div className="space-y-4">
-            <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Billed To</div>
-            <div>
-              <div className="text-2xl font-black text-slate-900 mb-1">{bill.customerName}</div>
-              <div className="text-sm font-bold text-slate-500 flex items-center gap-2">
-                <i className="fas fa-phone-alt text-orange-500 text-[10px]"></i>
-                {bill.customerPhone}
+        {/* Info Section */}
+        <div className="p-8 space-y-4">
+           <div className="flex justify-between border-b border-[#4a0404]/20 pb-2">
+              <div className="flex gap-2">
+                 <span className="font-bold">Bill No. :</span>
+                 <span className="border-b border-dotted border-[#4a0404] min-w-[100px]">{bill.id}</span>
               </div>
-            </div>
-          </div>
-
-          <div className="space-y-4 md:text-right">
-            <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Payment Status</div>
-            <div>
-              <div className={`inline-flex px-6 py-2 rounded-full text-xs font-black uppercase tracking-widest border ${
-                bill.status === 'Paid' 
-                  ? 'bg-green-50 text-green-700 border-green-200' 
-                  : 'bg-orange-50 text-orange-700 border-orange-200'
-              }`}>
-                {bill.status === 'Paid' ? 'Payment Completed' : 'Payment Pending'}
+              <div className="flex gap-2">
+                 <span className="font-bold">Date :</span>
+                 <span className="border-b border-dotted border-[#4a0404] min-w-[150px]">{bill.date}</span>
               </div>
-            </div>
-          </div>
+           </div>
+           <div className="flex gap-2 border-b border-[#4a0404]/20 pb-2">
+              <span className="font-bold">Name :</span>
+              <span className="flex-1 border-b border-dotted border-[#4a0404] font-bold">{bill.customerName}</span>
+           </div>
+           <div className="flex gap-2 border-b border-[#4a0404]/20 pb-2">
+              <span className="font-bold">Address :</span>
+              <span className="flex-1 border-b border-dotted border-[#4a0404]">{bill.customerAddress || '-'}</span>
+           </div>
         </div>
 
-        {/* Invoice Items Table */}
-        <div className="px-10 py-8 print:px-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+        {/* Table Section */}
+        <div className="px-8 pb-8">
+           <table className="w-full border-2 border-[#4a0404] text-center border-collapse">
               <thead>
-                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                  <th className="pb-4">Job Description</th>
-                  <th className="pb-4 text-center">Specs</th>
-                  <th className="pb-4 text-center">Rate</th>
-                  <th className="pb-4 text-center">Qty</th>
-                  <th className="pb-4 text-right">Total</th>
-                </tr>
+                 <tr className="border-b-2 border-[#4a0404] font-bold text-sm">
+                    <th className="border-r-2 border-[#4a0404] py-2 w-12">Sr. No.</th>
+                    <th className="border-r-2 border-[#4a0404] py-2">Particulars</th>
+                    <th className="border-r-2 border-[#4a0404] py-2 w-16">QTY.</th>
+                    <th className="border-r-2 border-[#4a0404] py-2 w-20">Total Sqft.</th>
+                    <th className="border-r-2 border-[#4a0404] py-2 w-20">Sqft. Rate</th>
+                    <th className="py-2 w-24">Amount</th>
+                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
-                {bill.items.map((item, idx) => (
-                  <tr key={item.id + idx}>
-                    <td className="py-6">
-                      <div className="font-black text-slate-800">{item.serviceName}</div>
-                      <div className={`text-[9px] font-bold uppercase mt-1 ${item.status === 'Paid' ? 'text-green-500' : 'text-orange-500'}`}>
-                         {item.status}
-                      </div>
-                    </td>
-                    <td className="py-6 text-center">
-                      <div className="text-[11px] font-bold text-slate-500">
-                        {item.width > 0 ? `${item.width}x${item.height}` : 'Unit'}
-                        {item.sqft > 0 && <span className="block text-[9px] text-slate-400">{item.sqft.toFixed(2)} ft²</span>}
-                      </div>
-                    </td>
-                    <td className="py-6 text-center text-xs font-bold text-slate-600">₹{item.rate.toLocaleString('en-IN')}</td>
-                    <td className="py-6 text-center text-xs font-bold text-slate-600">{item.quantity}</td>
-                    <td className="py-6 text-right font-black text-slate-900">₹{item.amount.toLocaleString('en-IN')}</td>
-                  </tr>
-                ))}
+              <tbody>
+                 {bill.items.map((item, index) => (
+                    <tr key={item.id} className="text-sm">
+                       <td className="border-r-2 border-[#4a0404] py-3">{index + 1}</td>
+                       <td className="border-r-2 border-[#4a0404] py-3 px-4 text-left font-bold">{item.serviceName}</td>
+                       <td className="border-r-2 border-[#4a0404] py-3">{item.quantity}</td>
+                       <td className="border-r-2 border-[#4a0404] py-3">{item.sqft > 0 ? item.sqft.toFixed(2) : '-'}</td>
+                       <td className="border-r-2 border-[#4a0404] py-3">{item.rate}</td>
+                       <td className="py-3 font-bold">{item.amount.toLocaleString('en-IN')}</td>
+                    </tr>
+                 ))}
+                 {/* Empty rows to maintain height */}
+                 {Array.from({ length: Math.max(0, 8 - bill.items.length) }).map((_, i) => (
+                    <tr key={`empty-${i}`} className="h-10">
+                       <td className="border-r-2 border-[#4a0404]"></td>
+                       <td className="border-r-2 border-[#4a0404]"></td>
+                       <td className="border-r-2 border-[#4a0404]"></td>
+                       <td className="border-r-2 border-[#4a0404]"></td>
+                       <td className="border-r-2 border-[#4a0404]"></td>
+                       <td></td>
+                    </tr>
+                 ))}
               </tbody>
-            </table>
-          </div>
+              <tfoot className="border-t-2 border-[#4a0404] font-bold">
+                 <tr>
+                    <td colSpan={4} rowSpan={3} className="border-r-2 border-[#4a0404] p-4 text-left align-bottom">
+                       <p className="text-xs">Flex printing will not be done unless</p>
+                       <p className="text-sm font-black">100% advance is paid.</p>
+                       <p className="text-[10px]">(१००% अॅडव्हान्स दिल्याशिवाय फ्लेक्स फिटिंग केला जाणार नाही.)</p>
+                    </td>
+                    <td className="border-r-2 border-[#4a0404] border-b-2 py-1 text-sm">Total</td>
+                    <td className="border-b-2 py-1 text-sm font-black">₹{bill.totalAmount.toLocaleString('en-IN')}</td>
+                 </tr>
+                 <tr>
+                    <td className="border-r-2 border-[#4a0404] border-b-2 py-1 text-sm">Advance</td>
+                    <td className="border-b-2 py-1 text-sm font-black">₹{bill.receivedAmount.toLocaleString('en-IN')}</td>
+                 </tr>
+                 <tr>
+                    <td className="border-r-2 border-[#4a0404] py-1 text-sm">Balance Amt.</td>
+                    <td className="py-1 text-sm font-black">₹{balanceAmt.toLocaleString('en-IN')}</td>
+                 </tr>
+              </tfoot>
+           </table>
         </div>
 
-        {/* Totals & Notes */}
-        <div className="px-10 py-12 bg-slate-50 grid grid-cols-1 md:grid-cols-2 gap-10 print:bg-white print:px-0">
-          <div className="space-y-4">
-            <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Notes & Instructions</div>
-            <p className="text-sm text-slate-600 italic leading-relaxed">
-              {bill.notes || 'No specific instructions provided for this invoice.'}
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            <div className="flex justify-between items-center text-slate-500 text-sm font-bold">
-              <span>Subtotal</span>
-              <span>₹{bill.totalAmount.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="flex justify-between items-center text-slate-500 text-sm font-bold">
-              <span>Tax (GST 0%)</span>
-              <span>₹0</span>
-            </div>
-            <div className="pt-6 border-t border-slate-200 flex justify-between items-center">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Total Amount</span>
-              <span className="text-4xl font-black text-orange-600">₹{bill.totalAmount.toLocaleString('en-IN')}</span>
-            </div>
-          </div>
+        {/* Signatory Section */}
+        <div className="px-8 pb-12 flex justify-end">
+           <div className="text-center">
+              <div className="w-48 border-b border-[#4a0404]"></div>
+              <p className="text-sm font-black mt-2">For For,</p>
+              <p className="text-sm font-black">Shri Ganesh Flex</p>
+           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-10 py-10 text-center border-t border-slate-50 print:px-0">
-          <p className="text-xs font-bold text-slate-400 mb-6">Thank you for your business! Reach out for any questions.</p>
-          <div className="flex flex-wrap justify-center gap-4 print:hidden">
-            <button 
-              onClick={printInvoice}
-              className="px-8 py-3 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-black transition-all flex items-center gap-2"
-            >
-              <i className="fas fa-print"></i> Download PDF / Print
-            </button>
-            <button 
-              onClick={() => window.location.href = '/'}
-              className="px-8 py-3 bg-white border border-slate-200 text-slate-600 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
-            >
-              Back to Website
-            </button>
-          </div>
-        </div>
+        <style>{`
+          @media print {
+            @page {
+              size: auto;
+              margin: 10mm;
+            }
+            body {
+              background: white;
+            }
+            .print\\:hidden {
+              display: none !important;
+            }
+            /* A4 support */
+            .max-w-\\[800px\\] {
+              max-width: 100% !important;
+              width: 100% !important;
+              box-shadow: none !important;
+              margin: 0 !important;
+            }
+            /* Thermal Printer Adjustments (approx 80mm) */
+            @page thermal {
+              size: 80mm auto;
+              margin: 2mm;
+            }
+            .thermal-print {
+              width: 80mm !important;
+              font-size: 10px !important;
+            }
+          }
+        `}</style>
       </div>
-      
-      <div className="mt-12 text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.5em] print:hidden">
-        Secure Digital Invoice • Shree Ganesh ERP
+
+      {/* Floating Action Buttons (Hidden on Print) */}
+      <div className="max-w-[800px] mx-auto mt-8 flex justify-center gap-4 print:hidden">
+         <button 
+           onClick={printInvoice}
+           className="px-10 py-4 bg-[#4a0404] text-white font-black rounded-2xl shadow-xl hover:scale-105 transition-all flex items-center gap-3"
+         >
+           <i className="fas fa-print"></i>
+           Print Invoice
+         </button>
+         <button 
+           onClick={() => window.location.href = '/'}
+           className="px-10 py-4 bg-white text-[#4a0404] border-2 border-[#4a0404] font-black rounded-2xl shadow-xl hover:scale-105 transition-all"
+         >
+           Back to Dashboard
+         </button>
       </div>
     </div>
   );

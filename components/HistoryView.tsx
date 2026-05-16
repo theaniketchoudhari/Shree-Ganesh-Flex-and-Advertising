@@ -6,10 +6,11 @@ import { generateReminderMessage } from '../services/geminiService';
 interface HistoryViewProps {
   bills: Bill[];
   onUpdateItemStatus: (billId: string, itemId: string, status: 'Pending' | 'Paid') => void;
+  onUpdateBill: (billId: string, updates: Partial<Bill>) => void;
   onDelete: (id: string) => void;
 }
 
-const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, onDelete }) => {
+const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, onUpdateBill, onDelete }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -40,6 +41,17 @@ const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, on
     }).catch(err => {
       console.error('Failed to copy: ', err);
     });
+  };
+
+  const handleCall = (phone: string) => {
+    window.location.href = `tel:${phone}`;
+  };
+
+  const handleUpdateReceived = (billId: string, amount: number) => {
+    const bill = bills.find(b => b.id === billId);
+    if (!bill) return;
+    const status = amount >= bill.totalAmount ? 'Paid' : 'Pending';
+    onUpdateBill(billId, { receivedAmount: amount, status });
   };
 
   const exportToCSV = () => {
@@ -102,7 +114,7 @@ const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, on
             <thead>
               <tr className="bg-gray-50/50 border-b border-gray-100">
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Client & Date</th>
-                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Billing Info</th>
+                <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Billing Info (Total/Rec./Pend.)</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Payment Status</th>
                 <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
@@ -128,42 +140,64 @@ const HistoryView: React.FC<HistoryViewProps> = ({ bills, onUpdateItemStatus, on
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      <div className="text-lg font-black text-slate-800">₹{bill.totalAmount.toLocaleString('en-IN')}</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                         {bill.items.filter(i => i.status === 'Paid').length} / {bill.items.length} Jobs Paid
+                      <div className="flex flex-col">
+                        <div className="text-lg font-black text-slate-800">₹{bill.totalAmount.toLocaleString('en-IN')}</div>
+                        <div className="flex items-center gap-2 mt-2">
+                           <div className="flex flex-col">
+                             <span className="text-[8px] font-black text-slate-400 uppercase">Received</span>
+                             <input 
+                               type="number"
+                               className="w-20 bg-slate-50 border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-green-500 rounded-lg px-2 py-1 text-xs font-black text-green-600 outline-none"
+                               value={bill.receivedAmount || 0}
+                               onChange={e => handleUpdateReceived(bill.id, parseFloat(e.target.value) || 0)}
+                             />
+                           </div>
+                           <div className="flex flex-col">
+                             <span className="text-[8px] font-black text-slate-400 uppercase">Pending</span>
+                             <div className="text-[11px] font-black text-red-500 px-2 py-1">₹{(bill.totalAmount - (bill.receivedAmount || 0)).toLocaleString('en-IN')}</div>
+                           </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-5 text-center">
                       <div className={`inline-flex px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${
                           bill.status === 'Paid' 
                             ? 'bg-green-50 text-green-700 border-green-200' 
-                            : 'bg-orange-50 text-orange-700 border-orange-200'
+                            : (bill.receivedAmount || 0) > 0 
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-orange-50 text-orange-700 border-orange-200'
                         }`}
                       >
-                        {bill.status === 'Paid' ? 'Complete' : 'Pending Payment'}
+                        {bill.status === 'Paid' ? 'Completed' : (bill.receivedAmount || 0) > 0 ? 'Partial' : 'Pending'}
                       </div>
                     </td>
                     <td className="px-6 py-5 text-right">
-                      <div className="flex justify-end space-x-2">
-                        {bill.status === 'Pending' && (
-                          <button
-                            onClick={() => handleWhatsApp(bill)}
-                            disabled={sendingId === bill.id}
-                            className="p-3 text-green-600 bg-green-50 hover:bg-green-100 rounded-xl disabled:opacity-50"
-                          >
-                            <i className={`fab fa-whatsapp ${sendingId === bill.id ? 'animate-spin' : ''}`}></i>
-                          </button>
-                        )}
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleWhatsApp(bill)}
+                          className="p-2.5 text-green-600 bg-green-50 hover:bg-green-100 rounded-xl transition-all"
+                          title="WhatsApp Reminder"
+                        >
+                          <i className="fab fa-whatsapp"></i>
+                        </button>
+                        <button
+                          onClick={() => handleCall(bill.customerPhone)}
+                          className="p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all"
+                          title="Call Customer"
+                        >
+                          <i className="fas fa-phone-alt"></i>
+                        </button>
                         <button
                           onClick={() => handleShareLink(bill.id)}
-                          className="p-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl"
-                          title="Copy Public Link"
+                          className="p-2.5 text-slate-400 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                          title="Copy Link"
                         >
                           <i className="fas fa-link"></i>
                         </button>
                         <button
                           onClick={() => onDelete(bill.id)}
-                          className="p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl"
+                          className="p-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
+                          title="Delete Invoice"
                         >
                           <i className="fas fa-trash-alt"></i>
                         </button>

@@ -269,7 +269,12 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
                     </td>
                     <td className="px-8 py-5 text-right font-black text-red-500">- ₹{exp.amount.toLocaleString('en-IN')}</td>
                     <td className="px-8 py-5 text-right">
-                      <button onClick={() => onDeleteExpense(exp.id)} className="text-gray-200 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"><i className="fas fa-trash-alt"></i></button>
+                      <button 
+                        onClick={() => { if(window.confirm("Delete this expense?")) onDeleteExpense(exp.id); }} 
+                        className="text-slate-300 hover:text-red-500 transition-colors"
+                      >
+                        <i className="fas fa-trash-alt"></i>
+                      </button>
                     </td>
                   </tr>
                 ))}
