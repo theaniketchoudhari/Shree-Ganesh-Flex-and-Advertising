@@ -501,7 +501,7 @@ const App: React.FC = () => {
         <div className="flex-1 py-10 space-y-1 overflow-y-auto thin-scrollbar">
           {[
             { id: 'Billing', label: 'Create Invoice', icon: 'fa-plus-circle' },
-            { id: 'History', label: 'Sales History', icon: 'fa-receipt' },
+            { id: 'History', label: 'Invoice Reports', icon: 'fa-file-invoice' },
             { id: 'Analytics', label: 'Finance Intelligence', icon: 'fa-chart-pie' },
             { id: 'Personal', label: 'Private Vault', icon: 'fa-user-lock' }
           ].map((item) => (

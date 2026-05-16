@@ -354,6 +354,15 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
               >
                 Generate & Save Bill
               </button>
+
+              <button 
+                onClick={handleSave}
+                disabled={selectedItems.length === 0}
+                className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-slate-700 flex items-center justify-center gap-3 mt-4"
+              >
+                <i className="fas fa-print"></i>
+                Print Invoice
+              </button>
             </div>
           </div>
         </div>
