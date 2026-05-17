@@ -41,11 +41,15 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
       const updated = { ...item, ...updates };
       
       const s = services.find(srv => srv.id === updated.serviceId);
-      if (s?.category === 'sqft') {
-        updated.sqft = updated.width * updated.height;
-        updated.amount = updated.sqft * updated.rate * updated.quantity;
-      } else {
-        updated.amount = updated.rate * updated.quantity;
+      // Only auto-calculate if amount is not being manually overridden in this call
+      if (!updates.hasOwnProperty('amount')) {
+        const extra = updated.extraCharge || 0;
+        if (s?.category === 'sqft') {
+          updated.sqft = updated.width * updated.height;
+          updated.amount = (updated.sqft * updated.rate * updated.quantity) + extra;
+        } else {
+          updated.amount = (updated.rate * updated.quantity) + extra;
+        }
       }
       return updated;
     }));
@@ -84,9 +88,9 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
     setManualTotal(null);
     setReceivedAmount(0);
 
-    // Auto open print dialog by redirecting
+    // Auto open print dialog by redirecting current tab (avoids popup blockers)
     const printUrl = `${window.location.origin}${window.location.pathname}?inv=${newBill.id}&print=true`;
-    window.open(printUrl, '_blank');
+    window.location.href = printUrl;
   };
 
   const handleDeleteService = (id: string) => {
@@ -218,6 +222,7 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
                   <th className="pb-4 px-2 text-center">Net Area</th>
                   <th className="pb-4 px-2 text-center">Rate</th>
                   <th className="pb-4 px-2 text-center">Qty</th>
+                  <th className="pb-4 px-2 text-center">Extra Charge</th>
                   <th className="pb-4 px-2 text-right">Subtotal</th>
                   <th className="pb-4 px-2"></th>
                 </tr>
@@ -274,8 +279,28 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
                           onChange={e => updateItem(item.id, { quantity: parseInt(e.target.value) || 1 })}
                         />
                       </td>
+                      <td className="py-6 px-2 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-[10px] text-slate-300 font-bold">+₹</span>
+                          <input 
+                            type="number" 
+                            className="w-16 bg-white ring-1 ring-slate-200 focus:ring-2 focus:ring-orange-500 rounded-xl px-2 py-2 text-xs text-center font-black outline-none"
+                            value={item.extraCharge || ''}
+                            placeholder="0"
+                            onChange={e => updateItem(item.id, { extraCharge: parseFloat(e.target.value) || 0 })}
+                          />
+                        </div>
+                      </td>
                       <td className="py-6 px-2 text-right font-black text-slate-900">
-                        ₹{item.amount.toLocaleString('en-IN')}
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-[10px] text-slate-300 font-bold">₹</span>
+                          <input 
+                            type="number" 
+                            className="w-24 bg-white ring-1 ring-slate-200 focus:ring-2 focus:ring-orange-500 rounded-xl px-2 py-2 text-xs text-right font-black outline-none"
+                            value={item.amount}
+                            onChange={e => updateItem(item.id, { amount: parseFloat(e.target.value) || 0 })}
+                          />
+                        </div>
                       </td>
                       <td className="py-6 px-2 text-right">
                         <button onClick={() => removeItem(item.id)} className="w-8 h-8 flex items-center justify-center text-slate-200 hover:text-red-500 hover:bg-red-50 rounded-full transition-all">
@@ -350,18 +375,10 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
               <button 
                 onClick={handleSave}
                 disabled={selectedItems.length === 0}
-                className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl active:scale-95 z-10"
-              >
-                Generate & Save Bill
-              </button>
-
-              <button 
-                onClick={handleSave}
-                disabled={selectedItems.length === 0}
-                className="w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all border border-slate-700 flex items-center justify-center gap-3 mt-4"
+                className="w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl active:scale-95 z-10 flex items-center justify-center gap-3"
               >
                 <i className="fas fa-print"></i>
-                Print Invoice
+                Generate, Save & Print Invoice
               </button>
             </div>
           </div>

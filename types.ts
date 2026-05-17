@@ -17,6 +17,7 @@ export interface BillItem {
   rate: number;
   quantity: number;
   amount: number;
+  extraCharge?: number; // Added extra charge
   status: 'Pending' | 'Paid'; // Added individual status
 }
 
