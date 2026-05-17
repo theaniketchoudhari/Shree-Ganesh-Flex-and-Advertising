@@ -62,6 +62,8 @@ const App: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     return params.has('inv');
   });
+  
+  const [toast, setToast] = useState<{ message: string, onUndo?: () => void } | null>(null);
 
   // Check for public invoice link
   useEffect(() => {
@@ -201,33 +203,12 @@ const App: React.FC = () => {
       const billWithUser = { ...newBill, userId: user.uid };
       setBills(prev => [billWithUser, ...prev]);
 
-      const existingIdx = bills.findIndex(b => 
-        b.status === 'Pending' && 
-        b.customerPhone === newBill.customerPhone && 
-        b.customerPhone !== '' &&
-        b.userId === user.uid
-      );
-      
-      if (existingIdx !== -1) {
-        const existing = bills[existingIdx];
-        const updatedBill = {
-          ...existing,
-          items: [...existing.items, ...newBill.items],
-          totalAmount: existing.totalAmount + newBill.totalAmount,
-          notes: (existing.notes || '') + (newBill.notes ? ` | ${newBill.notes}` : ''),
-          updatedAt: serverTimestamp(),
-          userId: user.uid
-        };
-        await setDoc(doc(db, 'bills', existing.id), updatedBill);
-        console.log("Bill Merged Successfully");
-      } else {
-        await setDoc(doc(db, 'bills', newBill.id), { 
-          ...billWithUser, 
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        console.log("Bill Saved Successfully:", newBill.id);
-      }
+      await setDoc(doc(db, 'bills', newBill.id), { 
+        ...billWithUser, 
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      console.log("Bill Saved Successfully:", newBill.id);
       
       // Auto-show print view instantly without reloading
       window.history.pushState({}, '', `?inv=${newBill.id}&print=true`);
@@ -295,15 +276,34 @@ const App: React.FC = () => {
   };
 
   const deleteBill = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
-    try {
-      // Optimistic update
-      setBills(prev => prev.filter(b => b.id !== id));
-      await deleteDoc(doc(db, 'bills', id));
-    } catch (e) {
-      // Re-sync will handle restoration if needed, or we could manually restore
-      handleFirestoreError(e, OperationType.DELETE, 'bills');
-    }
+    const billToRestore = bills.find(b => b.id === id);
+    if (!billToRestore) return;
+
+    // Optimistic update
+    setBills(prev => prev.filter(b => b.id !== id));
+    
+    let isUndone = false;
+    
+    const timeoutId = setTimeout(async () => {
+      if (!isUndone) {
+        try {
+          await deleteDoc(doc(db, 'bills', id));
+          setToast(null);
+        } catch (e) {
+          handleFirestoreError(e, OperationType.DELETE, 'bills');
+        }
+      }
+    }, 30000); // 30 seconds
+
+    setToast({
+      message: "Invoice deleted.",
+      onUndo: () => {
+        isUndone = true;
+        clearTimeout(timeoutId);
+        setBills(prev => [billToRestore, ...prev].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)));
+        setToast(null);
+      }
+    });
   };
 
   const addService = async (s: Service) => {
@@ -436,7 +436,7 @@ const App: React.FC = () => {
   }
 
   if (publicBill) {
-    return <PublicInvoiceView bill={publicBill} />;
+    return <PublicInvoiceView bill={publicBill} onClose={() => { setPublicBill(null); window.history.pushState({}, '', '/'); }} />;
   }
 
   if (!user && !loading) {
@@ -581,6 +581,21 @@ const App: React.FC = () => {
           {view === 'Personal' && <PersonalView transactions={personalTransactions} onAdd={addPersonal} onDelete={deletePersonal} />}
         </div>
       </main>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl z-50 flex items-center gap-6 animate-fade-in border border-slate-700">
+          <span className="font-bold text-xs uppercase tracking-widest">{toast.message}</span>
+          {toast.onUndo && (
+            <button 
+              onClick={toast.onUndo}
+              className="text-orange-500 hover:text-orange-400 font-black text-xs uppercase tracking-widest transition-colors flex items-center gap-2"
+            >
+              <i className="fas fa-undo"></i> Undo
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="fixed bottom-0 left-0 w-full bg-[#0F172A] border-t border-slate-800 h-10 flex items-center px-6 overflow-hidden z-30">
         <div className="w-full flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest">

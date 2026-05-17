@@ -3,13 +3,14 @@ import { Bill } from '../types';
 
 interface PublicInvoiceViewProps {
   bill: Bill;
+  onClose?: () => void;
 }
 
 /**
  * PublicInvoiceView renders the customer-facing invoice template
  * Optimized for A4 and Thermal printing layouts.
  */
-const PublicInvoiceView: React.FC<PublicInvoiceViewProps> = ({ bill }) => {
+const PublicInvoiceView: React.FC<PublicInvoiceViewProps> = ({ bill, onClose }) => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('print') === 'true') {
@@ -204,7 +205,10 @@ const PublicInvoiceView: React.FC<PublicInvoiceViewProps> = ({ bill }) => {
            Print Invoice
          </button>
          <button 
-           onClick={() => window.location.href = '/'}
+           onClick={() => {
+             if (onClose) onClose();
+             else window.location.href = '/';
+           }}
            className="px-10 py-4 bg-white text-[#4a0404] border-2 border-[#4a0404] font-black rounded-2xl shadow-xl hover:scale-105 transition-all"
          >
            Back to Dashboard
