@@ -199,8 +199,11 @@ const App: React.FC = () => {
     try {
       console.log("Saving Bill:", newBill.id, "for user:", user.uid);
       
+      // Strip undefined values to prevent Firestore crashes (Firestore throws if any field is explicitly undefined)
+      const cleanBill = JSON.parse(JSON.stringify(newBill));
+      
       // OPTIMISTIC UPDATE: Update local state immediately for instant feedback
-      const billWithUser = { ...newBill, userId: user.uid };
+      const billWithUser = { ...cleanBill, userId: user.uid };
       setBills(prev => [billWithUser, ...prev]);
 
       await setDoc(doc(db, 'bills', newBill.id), { 
