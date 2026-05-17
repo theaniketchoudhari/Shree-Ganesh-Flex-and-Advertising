@@ -17,13 +17,8 @@ const PublicInvoiceView: React.FC<PublicInvoiceViewProps> = ({ bill }) => {
         window.print();
       }, 800);
 
-      window.onafterprint = () => {
-        window.close();
-      };
-
       return () => {
         clearTimeout(timer);
-        window.onafterprint = null;
       };
     }
   }, []);

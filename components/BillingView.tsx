@@ -88,9 +88,7 @@ const BillingView: React.FC<BillingViewProps> = ({ services, onSave, onAddServic
     setManualTotal(null);
     setReceivedAmount(0);
 
-    // Auto open print dialog by redirecting current tab (avoids popup blockers)
-    const printUrl = `${window.location.origin}${window.location.pathname}?inv=${newBill.id}&print=true`;
-    window.location.href = printUrl;
+    // State reset handles UI, App.tsx now handles the redirect seamlessly without page reload.
   };
 
   const handleDeleteService = (id: string) => {

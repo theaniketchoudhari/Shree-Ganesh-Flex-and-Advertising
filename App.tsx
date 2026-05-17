@@ -228,7 +228,11 @@ const App: React.FC = () => {
         });
         console.log("Bill Saved Successfully:", newBill.id);
       }
-      alert("Invoice Generated and Saved Successfully!");
+      
+      // Auto-show print view instantly without reloading
+      window.history.pushState({}, '', `?inv=${newBill.id}&print=true`);
+      setPublicBill(newBill);
+      
     } catch (e) {
       console.error("Error saving bill:", e);
       // Rollback optimistic update if failed
