@@ -41,19 +41,13 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
   };
 
   const totalRevenue = bills.reduce((acc, bill) => {
-    const paidItemsTotal = bill.items
-      .filter(item => item.status === 'Paid')
-      .reduce((sum, item) => sum + item.amount, 0);
-    return acc + paidItemsTotal;
+    return acc + (bill.receivedAmount || 0);
   }, 0);
     
   const totalExpenses = expenses.reduce((acc, exp) => acc + exp.amount, 0);
   
   const totalPending = bills.reduce((acc, bill) => {
-    const pendingItemsTotal = bill.items
-      .filter(item => item.status === 'Pending')
-      .reduce((sum, item) => sum + item.amount, 0);
-    return acc + pendingItemsTotal;
+    return acc + Math.max(0, (bill.totalAmount || 0) - (bill.receivedAmount || 0));
   }, 0);
     
   const netProfit = totalRevenue - totalExpenses;
@@ -93,10 +87,7 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
     const dailyRevenue = bills
       .filter(b => b.date === date)
       .reduce((billSum, b) => {
-        const paidItemsForDay = b.items
-          .filter(item => item.status === 'Paid')
-          .reduce((itemSum, item) => itemSum + item.amount, 0);
-        return billSum + paidItemsForDay;
+        return billSum + (b.receivedAmount || 0);
       }, 0);
       
     const dailyExpenses = expenses
@@ -164,7 +155,7 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
             <div>
               <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Paid Revenue</p>
               <h4 className="text-xl font-black text-gray-800">₹{totalRevenue.toLocaleString('en-IN')}</h4>
-              <p className="text-[8px] text-green-500 font-bold uppercase tracking-tighter">Verified Items Only</p>
+              <p className="text-[8px] text-green-500 font-bold uppercase tracking-tighter">Total Collected</p>
             </div>
           </div>
         </div>
@@ -216,7 +207,7 @@ const InsightsView: React.FC<InsightsViewProps> = ({ bills, expenses, onAddExpen
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
           <h3 className="text-xl font-black text-gray-800 flex items-center">
             <span className="w-2 h-8 bg-orange-500 rounded-full mr-3"></span>
-            Monthly Flow (Paid Items Only)
+            Monthly Flow (Collected Amount)
           </h3>
           <div className="flex flex-wrap gap-4 text-[9px] font-black uppercase tracking-widest text-gray-400">
             <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-400 rounded-sm"></span> Received</span>
